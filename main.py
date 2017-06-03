@@ -46,22 +46,28 @@ class local_server():
             conn,addr=sock.accept()
             thr = threading.Thread(target=self.request_handler, args=(conn, addr))
             thr.start()
-            
+         
+         
+         
+    def geocell_sender(self,request):
+        pass
+    
+    def geocell_receiver(self):
+        pass
+       
     def request_handler(self,conn,addr):
         
         
         try:
             #მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
             request=recv_all(conn)
+            self.geocell_sender(request)
+            data=self.geocell_receiver()
             
+            conn.send_all(data)
             
-            
-            
-            
-            
-            
-        except:
-            pass
+        except Exception as e:
+            print("error in request handler"+str(e))
             
         finally:
             conn.close()
