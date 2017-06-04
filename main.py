@@ -108,7 +108,38 @@ class local_server():
         
         
     
-    def geocell_receiver(self):
+    def geocell_receiver(self,request_id):
+    
+        server_address = (settings.remote_server_ip, settings.remote_server_port)
+
+        data_to_send = json.dumps({'op': 'receive', 'req_id': request_id}, ensure_ascii=False)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+        server_address = (settings.remote_server_ip, settings.remote_server_port)
+        
+        sock.connect(server_address)
+        
+        sock.sendall(data_to_send)
+        incoming_data_fragments_length=int(sock.recv(1024).decode())
+        sock.close()
+        
+        
+        res_data=b''
+        for i in range(0,incoming_data_fragments_length):
+            
+            
+            
+            
+            
+            
+        
+        
+        
+
+        
+        
+        
         pass
     
     def request_handler(self, conn, addr):
