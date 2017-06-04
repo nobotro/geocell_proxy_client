@@ -72,6 +72,7 @@ class local_server():
             status=''
             while counter < settings.max_resend_try:
                 
+                counter=counter+1
                 sock.connect(server_address)
                 
                 try:
@@ -112,7 +113,7 @@ class local_server():
     
         server_address = (settings.remote_server_ip, settings.remote_server_port)
 
-        data_to_send = json.dumps({'op': 'receive', 'req_id': request_id}, ensure_ascii=False)
+        data_to_send = json.dumps({'op': 'receive_fr_count', 'req_id': request_id}, ensure_ascii=False)
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
