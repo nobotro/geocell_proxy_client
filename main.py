@@ -34,7 +34,7 @@ class local_server():
     requests_counter = 0
     thread_lock = threading.Lock()
     
-    def get_next_request_count(self, func, *args):
+    def get_next_request_count(self, *args):
         
         self.thread_lock.acquire()
         res = self.requests_counter + 1
@@ -54,7 +54,7 @@ class local_server():
             thr = threading.Thread(target=self.request_handler, args=(conn, addr))
             thr.start()
     
-    def geocell_sender(self, request: str):
+    def request_fragment_geocell_sender(self, request: str):
         
         fragment_array = re.findall(''.join('(\S{{{}}})'.format(4000)), request)
         
@@ -62,7 +62,7 @@ class local_server():
         
         for fragment in fragment_array:
             
-            data_to_send = json.dumps({'op': 'send', 'req_id': request_id, 'data': fragment}, ensure_ascii=False)
+            data_to_send = json.dumps({'op': 'send', 'request_id': request_id, 'data': fragment}, ensure_ascii=False)
             
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             
@@ -106,14 +106,55 @@ class local_server():
                 return status
                     
         return status
-        
-        
+
+    def geocell_sender(self, request: str):
     
+            request_id = self.get_next_request_count()
+            data_to_send = json.dumps({'op': 'send_req_data', 'request_id': str(request_id), 'data': request}, ensure_ascii=False).encode()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+            server_address = (settings.remote_server_ip, settings.remote_server_port)
+        
+            counter = 0
+            status = ''
+            while counter < settings.max_resend_try:
+            
+                counter = counter + 1
+                sock.connect(server_address)
+            
+                try:
+                    sock.settimeout(4)
+                    sock.sendall(data_to_send)
+                    sock.settimeout(None)
+                
+                    sock.settimeout(4)
+                    ack = sock.recv(1000)
+                    sock.settimeout(None)
+                
+                    if ack:
+                        sock.close()
+                        status = request_id
+                    
+                        break
+                    else:
+                        sock.settimeout(None)
+                        sock.close()
+                        status = False
+                        continue
+            
+                except socket.timeout:
+                    sock.settimeout(None)
+                    sock.close()
+                    status = False
+                    continue
+                    
+            return status
+
     def geocell_receiver(self,request_id):
     
-        server_address = (settings.remote_server_ip, settings.remote_server_port)
+    
 
-        data_to_send = json.dumps({'op': 'receive_fr_count', 'req_id': request_id}, ensure_ascii=False)
+        data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)}, ensure_ascii=False).encode()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
@@ -122,12 +163,56 @@ class local_server():
         sock.connect(server_address)
         
         sock.sendall(data_to_send)
+        res=sock.recv(1024)
         incoming_data_fragments_length=int(sock.recv(1024).decode())
         sock.close()
         
         
         res_data=b''
         for i in range(0,incoming_data_fragments_length):
+    
+            data_to_send = json.dumps({'op': 'receive_fr_data', 'request_id': request_id}, ensure_ascii=False)
+    
+            while counter < settings.max_resend_try:
+        
+                counter = counter + 1
+                sock.connect(server_address)
+        
+                try:
+                    sock.settimeout(4)
+                    sock.sendall(data_to_send)
+                    sock.settimeout(None)
+            
+                    sock.settimeout(4)
+                    ack = sock.recv(4000)
+                    sock.settimeout(None)
+            
+                    if ack:
+                        res_data+=ack
+                        sock.close()
+                         
+                
+                        break
+                    else:
+                        sock.settimeout(None)
+                        sock.close()
+                        
+                        continue
+        
+                except socket.timeout:
+                    sock.settimeout(None)
+                    sock.close()
+                     
+                    continue
+    
+        return res_data
+            
+            
+            
+            
+            
+         
+            
             
             
             
@@ -147,8 +232,9 @@ class local_server():
         
         try:
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
-            request = conn.recv(4000)
+            request = conn.recv(4000).decode()
             request_id=self.geocell_sender(request)
+            print(request_id)
             data = self.geocell_receiver(request_id)
             
             conn.send_all(data)
@@ -158,3 +244,10 @@ class local_server():
         
         finally:
             conn.close()
+
+
+def server():
+    a=local_server()
+    a.start_server()
+if __name__ == "__main__":
+    server()
