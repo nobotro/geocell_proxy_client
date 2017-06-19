@@ -151,9 +151,7 @@ class local_server():
             return status
 
     def geocell_receiver(self,request_id):
-    
-    
-
+        
         data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)}, ensure_ascii=False).encode()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -163,24 +161,26 @@ class local_server():
         sock.connect(server_address)
         
         sock.sendall(data_to_send)
-        res=sock.recv(1024)
+  
         incoming_data_fragments_length=int(sock.recv(1024).decode())
+        print(str(incoming_data_fragments_length)+' fr length')
         sock.close()
         
         
         res_data=b''
         for i in range(0,incoming_data_fragments_length):
     
-            data_to_send = json.dumps({'op': 'receive_fr_data', 'request_id': request_id}, ensure_ascii=False)
-    
+            data_to_send = json.dumps({'op': 'receive_fr_data', 'request_id': str(request_id),'fr_index':i}, ensure_ascii=False)
+            counter=0
             while counter < settings.max_resend_try:
         
                 counter = counter + 1
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect(server_address)
         
                 try:
                     sock.settimeout(4)
-                    sock.sendall(data_to_send)
+                    sock.sendall(data_to_send.encode())
                     sock.settimeout(None)
             
                     sock.settimeout(4)
@@ -234,10 +234,10 @@ class local_server():
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
             request = conn.recv(4000).decode()
             request_id=self.geocell_sender(request)
-            print(request_id)
+       
             data = self.geocell_receiver(request_id)
             
-            conn.send_all(data)
+            conn.sendall(data)
         
         except Exception as e:
             print("error in request handler" + str(e))
