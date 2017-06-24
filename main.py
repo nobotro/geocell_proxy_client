@@ -1,3 +1,4 @@
+import datetime
 import socket
 import settings
 import re
@@ -81,7 +82,9 @@ class local_server():
                     sock.settimeout(None)
                     
                     sock.settimeout(4)
-                    ack = sock.recv(1000)
+                    
+                    
+                    ack = sock.recv(4000)
                     sock.settimeout(None)
                     
                     if ack:
@@ -128,12 +131,16 @@ class local_server():
                     sock.settimeout(None)
                 
                     sock.settimeout(4)
-                    ack = sock.recv(1000)
+                  
+                    ack = sock.recv(4000)
+                
+                  
                     sock.settimeout(None)
                 
                     if ack:
                         sock.close()
                         status = request_id
+                        
                     
                         break
                     else:
@@ -149,6 +156,61 @@ class local_server():
                     continue
                     
             return status
+
+    def threaded_receiver(self,fragment_id,request_id,res):
+        server_address = (settings.remote_server_ip, settings.remote_server_port)
+        
+        data_to_send = json.dumps({'op': 'receive_fr_data', 'request_id': str(request_id), 'fr_index': fragment_id},
+                                  ensure_ascii=False)
+        counter = 0
+        res_data = b''
+        while counter < settings.max_resend_try:
+            
+            counter = counter + 1
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect(server_address)
+        
+            try:
+                sock.settimeout(4)
+                sock.sendall(data_to_send.encode())
+                sock.settimeout(None)
+            
+                
+                t = datetime.datetime.now()
+            
+            
+                ack=b''
+                while True:
+                    sock.settimeout(4)
+                    t_ack= sock.recv(4000)
+                    ack+=t_ack
+                    sock.settimeout(None)
+                    if len(t_ack)==4000:break
+                    if not t_ack:break
+                    
+                print('ack len'+str(len(ack)))
+                t2 = datetime.datetime.now()
+               
+            
+                if ack:
+                    res_data += ack
+                    sock.close()
+                
+                    print("received fragment" + str(fragment_id) + ':' + str(request_id) + ' time:' + str(t2 - t))
+                
+                    break
+                else:
+                    sock.settimeout(None)
+                    sock.close()
+                
+                    continue
+        
+            except socket.timeout:
+                sock.settimeout(None)
+                sock.close()
+                
+        res.append({'counter':fragment_id,'data':res_data})
+
 
     def geocell_receiver(self,request_id):
         
@@ -168,42 +230,27 @@ class local_server():
         
         
         res_data=b''
+        
+        res=[]
+        ths=[]
         for i in range(0,incoming_data_fragments_length):
-    
-            data_to_send = json.dumps({'op': 'receive_fr_data', 'request_id': str(request_id),'fr_index':i}, ensure_ascii=False)
-            counter=0
-            while counter < settings.max_resend_try:
-        
-                counter = counter + 1
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.connect(server_address)
-        
-                try:
-                    sock.settimeout(4)
-                    sock.sendall(data_to_send.encode())
-                    sock.settimeout(None)
             
-                    sock.settimeout(4)
-                    ack = sock.recv(4000)
-                    sock.settimeout(None)
+            th=threading.Thread(target=self.threaded_receiver,args=(i,request_id,res,))
+            ths.append(th)
+        for j in ths:
+            j.start()
+        for j in ths:
+            j.join()
             
-                    if ack:
-                        res_data+=ack
-                        sock.close()
-                         
-                
-                        break
-                    else:
-                        sock.settimeout(None)
-                        sock.close()
-                        
-                        continue
+        res.sort(key=lambda x: x['counter'])
         
-                except socket.timeout:
-                    sock.settimeout(None)
-                    sock.close()
-                     
-                    continue
+        for i in res:
+            res_data+=i['data']
+            
+        
+        
+            
+             
     
         return res_data
             
@@ -232,12 +279,14 @@ class local_server():
         
         try:
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
-            request = conn.recv(4000).decode()
-            request_id=self.geocell_sender(request)
-       
-            data = self.geocell_receiver(request_id)
-            
-            conn.sendall(data)
+            request = conn.recv(4000)
+            if request:
+             
+                request_id=self.geocell_sender(request.decode())
+    
+                data = self.geocell_receiver(request_id)
+    
+                conn.sendall(data)
         
         except Exception as e:
             print("error in request handler" + str(e))
