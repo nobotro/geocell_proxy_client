@@ -1,8 +1,11 @@
+import base64
 import datetime
 import email
 import socket
 
 from io import StringIO
+
+import pickle
 
 import settings
 import re
@@ -267,25 +270,6 @@ class local_server():
         return res_data
             
             
-            
-            
-            
-         
-            
-            
-            
-            
-            
-            
-            
-        
-        
-        
-
-        
-        
-        
-        pass
     
     def request_handler(self, conn, addr):
         
@@ -312,11 +296,14 @@ class local_server():
                     reply += "Proxy-agent: Pyx\r\n"
                     reply += "\r\n"
                     conn.sendall(reply.encode())
+                   
 
                     request_id = self.get_next_request_count()
+                
+                    self.geocell_sender(request.decode(), request_id)
                     while True:
-                        data=conn.recv(1024)
-                        self.geocell_sender(request.decode(),request_id)
+                        request=conn.recv(1024)
+                        self.geocell_sender(str(request),request_id)
                         data = self.geocell_receiver(request_id,https=True)
                         if not data:
                             conn.close()
