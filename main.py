@@ -1,5 +1,9 @@
 import datetime
+import email
 import socket
+
+from io import StringIO
+
 import settings
 import re
 import threading
@@ -110,10 +114,14 @@ class local_server():
                     
         return status
 
-    def geocell_sender(self, request: str):
+    def geocell_sender(self, request,request_id):
     
-            request_id = self.get_next_request_count()
+            
             data_to_send = json.dumps({'op': 'send_req_data', 'request_id': str(request_id), 'data': request}, ensure_ascii=False).encode()
+             
+          
+                
+                
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
             server_address = (settings.remote_server_ip, settings.remote_server_port)
@@ -212,10 +220,14 @@ class local_server():
         res.append({'counter':fragment_id,'data':res_data})
 
 
-    def geocell_receiver(self,request_id):
+    def geocell_receiver(self,request_id,https=False):
         
-        data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)}, ensure_ascii=False).encode()
-
+        if not https:
+            data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)}, ensure_ascii=False).encode()
+        else:
+            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id)},
+                                      ensure_ascii=False).encode()
+            
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
         server_address = (settings.remote_server_ip, settings.remote_server_port)
@@ -281,12 +293,45 @@ class local_server():
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
             request = conn.recv(4000)
             if request:
-             
-                request_id=self.geocell_sender(request.decode())
     
-                data = self.geocell_receiver(request_id)
+                data = b''
+                try:
+                    _, headers = request.decode().split('\r\n', 1)
+                except:
+                    print('sgsg erori')
     
-                conn.sendall(data)
+                # construct a message from the request string
+                message = email.message_from_file(StringIO(headers))
+    
+                # construct a dictionary containing the headers
+                headers = dict(message.items())
+                headers['method'], headers['path'], headers['http-version'] = _.split()
+                
+                if headers['method']=='CONNECT':
+                    reply = "HTTP/1.0 200 Connection established\r\n"
+                    reply += "Proxy-agent: Pyx\r\n"
+                    reply += "\r\n"
+                    conn.sendall(reply.encode())
+
+                    request_id = self.get_next_request_count()
+                    while True:
+                        data=conn.recv(1024)
+                        self.geocell_sender(request.decode(),request_id)
+                        data = self.geocell_receiver(request_id)
+                        if not data:
+                            conn.close()
+                            break
+
+                        conn.sendall(data)
+                    
+                    
+                else:
+                    request_id = self.get_next_request_count()
+                    self.geocell_sender(request.decode(),request_id)
+        
+                    data = self.geocell_receiver(request_id)
+        
+                    conn.sendall(data)
         
         except Exception as e:
             print("error in request handler" + str(e))
