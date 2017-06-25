@@ -237,7 +237,7 @@ class local_server():
         sock.sendall(data_to_send)
   
         incoming_data_fragments_length=int(sock.recv(1024).decode())
-        print(str(incoming_data_fragments_length)+' fr length')
+        print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
         sock.close()
         
         
@@ -317,7 +317,7 @@ class local_server():
                     while True:
                         data=conn.recv(1024)
                         self.geocell_sender(request.decode(),request_id)
-                        data = self.geocell_receiver(request_id)
+                        data = self.geocell_receiver(request_id,https=True)
                         if not data:
                             conn.close()
                             break
