@@ -301,9 +301,10 @@ class local_server():
                     request_id = self.get_next_request_count()
                 
                     self.geocell_sender(request.decode(), request_id)
+                    self.geocell_receiver(request_id, https=True)
                     while True:
                         request=conn.recv(1024)
-                        self.geocell_sender(str(request),request_id)
+                        self.geocell_sender(base64.encodebytes(request).decode(),request_id)
                         data = self.geocell_receiver(request_id,https=True)
                         if not data:
                             conn.close()
