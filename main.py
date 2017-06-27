@@ -7,6 +7,8 @@ from io import StringIO
 
 import pickle
 
+import zlib
+
 import settings
 import re
 import threading
@@ -143,7 +145,7 @@ class local_server():
                 
                     sock.settimeout(4)
                   
-                    ack = sock.recv(4000)
+                    ack = sock.recv(8000)
                 
                   
                     sock.settimeout(None)
@@ -193,10 +195,10 @@ class local_server():
                 ack=b''
                 while True:
                     sock.settimeout(4)
-                    t_ack= sock.recv(4000)
+                    t_ack= sock.recv(8000)
                     ack+=t_ack
                     sock.settimeout(None)
-                    if len(t_ack)==4000:break
+                    if len(t_ack)==8000:break
                     if not t_ack:break
                     
                 print('ack len'+str(len(ack)))
@@ -275,7 +277,7 @@ class local_server():
         
         try:
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
-            request = conn.recv(4000)
+            request = conn.recv(8000)
             if request:
     
                 data = b''
@@ -297,14 +299,14 @@ class local_server():
                     reply += "\r\n"
                     conn.sendall(reply.encode())
                    
-
+ 
                     request_id = self.get_next_request_count()
                 
                     self.geocell_sender(request.decode(), request_id)
                     self.geocell_receiver(request_id, https=True)
                     while True:
-                        request=conn.recv(1024)
-                        self.geocell_sender(base64.encodebytes(request).decode(),request_id)
+                        request=conn.recv(2048)
+                        self.geocell_sender(base64.encodebytes(zlib.compress(request)).decode(),request_id)
                         data = self.geocell_receiver(request_id,https=True)
                         if not data:
                             conn.close()
