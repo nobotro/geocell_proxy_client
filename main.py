@@ -198,7 +198,7 @@ class local_server():
                     t_ack= sock.recv(8000)
                     ack+=t_ack
                     sock.settimeout(None)
-                    if len(t_ack)==8000:break
+                    if len(ack)==8000:break
                     if not t_ack:break
                     
                 print('ack len'+str(len(ack)))
