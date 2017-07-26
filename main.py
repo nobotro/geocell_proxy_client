@@ -125,7 +125,7 @@ class local_server():
           
                 
                 
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
             server_address = (settings.remote_server_ip, settings.remote_server_port)
         
@@ -134,35 +134,33 @@ class local_server():
             while counter < settings.max_resend_try:
             
                 counter = counter + 1
-                sock.connect(server_address)
+               
             
                 try:
-                    sock.settimeout(4)
-                    sock.sendall(data_to_send)
-                    sock.settimeout(None)
+                     
+                    sock.sendto(data_to_send,server_address)
+                    
                 
-                    sock.settimeout(4)
+                 
                   
-                    ack = sock.recv(4000)
+                    ack,addr = sock.recvfrom(65507)
                 
                   
-                    sock.settimeout(None)
+               
                 
                     if ack:
-                        sock.close()
+                        
                         status = request_id
                         
                     
                         break
                     else:
-                        sock.settimeout(None)
-                        sock.close()
+                      
                         status = False
                         continue
             
-                except socket.timeout:
-                    sock.settimeout(None)
-                    sock.close()
+                except :
+                  
                     status = False
                     continue
                     
@@ -178,26 +176,23 @@ class local_server():
         while counter < settings.max_resend_try:
             
             counter = counter + 1
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect(server_address)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            
         
             try:
-                sock.settimeout(4)
-                sock.sendall(data_to_send.encode())
-                sock.settimeout(None)
+               
+                sock.sendto(data_to_send.encode(),server_address)
+               
             
                 
                 t = datetime.datetime.now()
             
             
-                ack=b''
-                while True:
-                    sock.settimeout(4)
-                    t_ack= sock.recv(4000)
-                    ack+=t_ack
-                    sock.settimeout(None)
-                    if len(ack)==4000:break
-                    if not t_ack:break
+               
+                
+                    
+                ack,addr= sock.recvfrom(65507)
+                   
                     
                 print('ack len'+str(len(ack)))
                 t2 = datetime.datetime.now()
@@ -205,20 +200,18 @@ class local_server():
             
                 if ack:
                     res_data += ack
-                    sock.close()
+                   
                 
                     print("received fragment" + str(fragment_id) + ':' + str(request_id) + ' time:' + str(t2 - t))
                 
                     break
                 else:
-                    sock.settimeout(None)
-                    sock.close()
+                   
                 
                     continue
         
-            except socket.timeout:
-                sock.settimeout(None)
-                sock.close()
+            except:
+                pass
                 
         res.append({'counter':fragment_id,'data':res_data})
 
@@ -230,18 +223,19 @@ class local_server():
         else:
             data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id)},
                                       ensure_ascii=False).encode()
-            
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
         server_address = (settings.remote_server_ip, settings.remote_server_port)
         
-        sock.connect(server_address)
-        
-        sock.sendall(data_to_send)
-  
-        incoming_data_fragments_length=int(sock.recv(1024).decode())
+       
+
+        sock.sendto( data_to_send,server_address)
+        data,addr=sock.recvfrom(65507)
+        data=data.decode()
+        incoming_data_fragments_length=int(data)
         print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
-        sock.close()
+      
         
         
         res_data=b''
