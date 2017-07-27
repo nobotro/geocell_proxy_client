@@ -142,9 +142,9 @@ class local_server():
                     
                 
                  
-                  
+                    sock.settimeout(1)
                     ack,addr = sock.recvfrom(65507)
-                
+                    sock.settimeout(None)
                   
                
                 
@@ -191,9 +191,9 @@ class local_server():
             
                
                 
-                    
+                sock.settimeout(1)
                 ack,addr= sock.recvfrom(65507)
-                   
+                sock.settimeout(None)
                     
                 print('ack len'+str(len(ack)))
                 t2 = datetime.datetime.now()
@@ -218,7 +218,7 @@ class local_server():
 
 
     def geocell_receiver(self,request_id,https=False):
-        
+        start = time.time()
         if not https:
             data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)}, ensure_ascii=False).encode()
         else:
@@ -232,12 +232,15 @@ class local_server():
        
 
         sock.sendto( data_to_send,server_address)
+     
         data,addr=sock.recvfrom(65507)
+       
+        
         data=data.decode()
         incoming_data_fragments_length=int(data)
         print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
-      
-        
+
+        print('geocell fragmentebis migebis interval ' + str(time.time()-start))
         
         res_data=b''
         
@@ -256,12 +259,9 @@ class local_server():
         
         for i in res:
             res_data+=i['data']
-            
-        
-        
-            
-             
-    
+
+        start = time.time()-start
+        print('geocel receibving interval '+str(start))
         return res_data
             
             
@@ -270,6 +270,7 @@ class local_server():
         
         try:
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
+            
             request = conn.recv(10000)
             if request:
     
