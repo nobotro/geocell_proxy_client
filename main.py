@@ -29,7 +29,7 @@ def recv_all(conn):
         except socket.timeout:
             conn.settimeout(None)
             
-            print("received all")
+           #print("received all")
     
     return result
 
@@ -142,7 +142,7 @@ class local_server():
                     
                 
                  
-                    sock.settimeout(1)
+                    sock.settimeout(0.2)
                     ack,addr = sock.recvfrom(65507)
                     sock.settimeout(None)
                   
@@ -160,9 +160,9 @@ class local_server():
                         continue
             
                 except :
-                  
+                    sock.settimeout(None)
                     status = False
-                    print('ვერ მიიღო აცკი')
+                   #print('ვერ მიიღო აცკი')
                     continue
                     
             return status
@@ -191,11 +191,11 @@ class local_server():
             
                
                 
-                sock.settimeout(1)
+                sock.settimeout(0.2)
                 ack,addr= sock.recvfrom(65507)
                 sock.settimeout(None)
                     
-                print('ack len'+str(len(ack)))
+               #print('ack len'+str(len(ack)))
                 t2 = datetime.datetime.now()
                
             
@@ -203,7 +203,7 @@ class local_server():
                     res_data += ack
                    
                 
-                    print("received fragment" + str(fragment_id) + ':' + str(request_id) + ' time:' + str(t2 - t))
+                   #print("received fragment" + str(fragment_id) + ':' + str(request_id) + ' time:' + str(t2 - t))
                 
                     break
                 else:
@@ -212,6 +212,7 @@ class local_server():
                     continue
         
             except:
+                sock.settimeout(None)
                 pass
                 
         res.append({'counter':fragment_id,'data':res_data})
@@ -238,9 +239,9 @@ class local_server():
         
         data=data.decode()
         incoming_data_fragments_length=int(data)
-        print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
+       #print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
 
-        print('geocell fragmentebis migebis interval ' + str(time.time()-start))
+       #print('geocell fragmentebis migebis interval ' + str(time.time()-start))
         
         res_data=b''
         
@@ -261,7 +262,7 @@ class local_server():
             res_data+=i['data']
 
         start = time.time()-start
-        print('geocel receibving interval '+str(start))
+       #print('geocel receibving interval '+str(start))
         return res_data
             
             
@@ -278,7 +279,8 @@ class local_server():
                 try:
                     _, headers = request.decode().split('\r\n', 1)
                 except:
-                    print('sgsg erori')
+                    pass
+                   #print('sgsg erori')
     
                 # construct a message from the request string
                 message = email.message_from_file(StringIO(headers))
@@ -299,7 +301,20 @@ class local_server():
                     self. geocell_sender(request.decode(), request_id)
                     self.geocell_receiver(request_id, https=True)
                     while True:
-                        request=conn.recv(1024)
+                        request=b''
+                        while True:
+                            try:
+                                 conn.settimeout(0.2)
+                                 t=conn.recv(65000)
+                                 conn.settimeout(None)
+                                 request+=t
+                                 
+                                 if not t:
+                                     break
+                            except:
+                                conn.settimeout(None)
+                                break
+                                
                         self.geocell_sender(base64.encodebytes(request).decode(),request_id)
                         data = self.geocell_receiver(request_id,https=True)
                         if not data:
@@ -318,7 +333,8 @@ class local_server():
                     conn.sendall(data)
         
         except Exception as e:
-            print("error in request handler" + str(e))
+            pass
+           #print("error in request handler" + str(e))
         
         finally:
             conn.close()
