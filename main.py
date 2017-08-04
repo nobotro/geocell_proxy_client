@@ -142,7 +142,7 @@ class local_server():
                     
                 
                  
-                    sock.settimeout(0.2)
+                    sock.settimeout(0.5)
                     ack,addr = sock.recvfrom(65507)
                     sock.settimeout(None)
                   
@@ -177,13 +177,13 @@ class local_server():
         while counter < settings.max_resend_try:
             
             counter = counter + 1
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            
             
         
             try:
-               
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(data_to_send.encode(),server_address)
-               
+          
             
                 
                 t = datetime.datetime.now()
@@ -191,7 +191,7 @@ class local_server():
             
                
                 
-                sock.settimeout(0.2)
+                sock.settimeout(0.5)
                 ack,addr= sock.recvfrom(65507)
                 sock.settimeout(None)
                     
@@ -201,21 +201,29 @@ class local_server():
             
                 if ack:
                     res_data += ack
+                    data_to_send = json.dumps(
+                        {'op': 'receive_fr_data','fr_index': fragment_id,'request_id': str(request_id),'action':'delete'},
+                        ensure_ascii=False)
+                    sock.settimeout(0.5)
+                    sock.sendto(data_to_send.encode(), server_address)
+                    sock.settimeout(None)
                    
                 
-                   #print("received fragment" + str(fragment_id) + ':' + str(request_id) + ' time:' + str(t2 - t))
+                    # print("received fragment" + str(fragment_id) + ':' + str(request_id) + ' time:' + str(t2 - t))
                 
                     break
-                else:
-                   
-                
-                    continue
+                # else:
+                #
+                #
+                #     continue
         
             except:
+               
                 sock.settimeout(None)
-                pass
+               
                 
         res.append({'counter':fragment_id,'data':res_data})
+         
 
 
     def geocell_receiver(self,request_id,https=False):
@@ -248,8 +256,8 @@ class local_server():
         res=[]
         ths=[]
         for i in range(0,incoming_data_fragments_length):
-            
-            th=threading.Thread(target=self.threaded_receiver,args=(i,request_id,res,))
+         
+            th=threading.Thread(target=self.threaded_receiver,args=(i,request_id,res))
             ths.append(th)
         for j in ths:
             j.start()
@@ -297,9 +305,11 @@ class local_server():
                    
 
                     request_id = self.get_next_request_count()
-                
+                   
+                    
                     self. geocell_sender(request.decode(), request_id)
                     self.geocell_receiver(request_id, https=True)
+                   
                     while True:
                         request=b''
                         while True:
@@ -314,9 +324,10 @@ class local_server():
                             except:
                                 conn.settimeout(None)
                                 break
-                                
+                        print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
                         self.geocell_sender(base64.encodebytes(request).decode(),request_id)
                         data = self.geocell_receiver(request_id,https=True)
+                        print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
                         if not data:
                             conn.close()
                             break
@@ -326,15 +337,16 @@ class local_server():
                     
                 else:
                     request_id = self.get_next_request_count()
+                    print('send request with id:' + str(request_id) + ' size: ' + str(len(request)))
                     self.geocell_sender(request.decode(),request_id)
         
                     data = self.geocell_receiver(request_id)
-        
+                    print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) )
                     conn.sendall(data)
         
         except Exception as e:
             pass
-           #print("error in request handler" + str(e))
+            print("error in request handler" + str(e))
         
         finally:
             conn.close()
