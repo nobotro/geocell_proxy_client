@@ -311,7 +311,7 @@ class local_server():
                         request=b''
                         while True:
                             try:
-                                 conn.settimeout(0.5)
+                                 conn.settimeout(0.2)
                                  t=conn.recv(65000)
                                  conn.settimeout(None)
                                  request+=t
