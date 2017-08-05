@@ -14,7 +14,7 @@ import time
 
 import json
 
-
+import gzip
 def recv_all(conn):
     result = b''
     while True:
@@ -328,7 +328,8 @@ class local_server():
                         if not data:
                             conn.close()
                             break
-
+#აქ უნდა გზიპ დეკომპრესია
+                        data = gzip.decompress(data)
                         conn.sendall(data)
                     
                     
@@ -338,7 +339,9 @@ class local_server():
                     self.geocell_sender(request.decode(),request_id)
         
                     data = self.geocell_receiver(request_id)
-                    print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) )
+                    print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)))
+                    # აქ უნდა გზიპ დეკომპრესია
+                    data=gzip.decompress(data)
                     conn.sendall(data)
         
         except Exception as e:
