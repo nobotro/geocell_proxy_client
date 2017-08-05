@@ -142,7 +142,7 @@ class local_server():
                     
                 
                  
-                    sock.settimeout(0.5)
+                    sock.settimeout(settings.global_timeout)
                     ack,addr = sock.recvfrom(65507)
                     sock.settimeout(None)
                   
@@ -151,8 +151,7 @@ class local_server():
                     if ack:
                         
                         status = request_id
-                        
-                    
+                       
                         break
                     else:
                       
@@ -187,11 +186,8 @@ class local_server():
             
                 
                 t = datetime.datetime.now()
-            
-            
-               
-                
-                sock.settimeout(0.5)
+
+                sock.settimeout(settings.global_timeout)
                 ack,addr= sock.recvfrom(65507)
                 sock.settimeout(None)
                     
@@ -204,7 +200,7 @@ class local_server():
                     data_to_send = json.dumps(
                         {'op': 'receive_fr_data','fr_index': fragment_id,'request_id': str(request_id),'action':'delete'},
                         ensure_ascii=False)
-                    sock.settimeout(0.5)
+                    sock.settimeout(settings.global_timeout)
                     sock.sendto(data_to_send.encode(), server_address)
                     sock.settimeout(None)
                    
@@ -217,7 +213,8 @@ class local_server():
                 #
                 #     continue
         
-            except:
+            except Exception as e:
+                
                
                 sock.settimeout(None)
                
@@ -314,7 +311,7 @@ class local_server():
                         request=b''
                         while True:
                             try:
-                                 conn.settimeout(0.2)
+                                 conn.settimeout(0.5)
                                  t=conn.recv(65000)
                                  conn.settimeout(None)
                                  request+=t
