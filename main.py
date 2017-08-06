@@ -56,7 +56,11 @@ class local_server():
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((self.local_proxy_ip, self.local_proxy_port))
         sock.listen(5)
-        
+
+        print('[*] start proxy client at ip {} and port {}'.format(self.local_proxy_ip,str(self.local_proxy_port)))
+        print('[*] protocol http/https')
+        print('[*] socket protocol udp')
+
         while True:
             conn, addr = sock.accept()
             thr = threading.Thread(target=self.request_handler, args=(conn, addr))
