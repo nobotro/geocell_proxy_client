@@ -156,6 +156,7 @@ class local_server():
                
                 
                     if ack:
+                        ack=ack.decode()
                         if not request_id:
                             json_data = json.loads(ack)
                             status = json_data['request_id']
@@ -316,7 +317,7 @@ class local_server():
                     # request_id = self.get_next_request_count()
 
                     request_id= self. geocell_sender(request.decode())
-                    print(request_id)
+                    
                     if not request_id:
                         return
                     self.geocell_receiver(request_id, https=True)
