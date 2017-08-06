@@ -167,7 +167,8 @@ class local_server():
                 except Exception as e:
                     sock.settimeout(None)
                     status = False
-                    print(e)
+                    
+                    
                    #print('ვერ მიიღო აცკი')
                     continue
                     
@@ -285,7 +286,7 @@ class local_server():
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
             
             request = conn.recv(10000)
-            print('req sig'+str(len(request)))
+            # print('req sig'+str(len(request)))
             if request:
     
                 data = b''
