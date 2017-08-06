@@ -117,10 +117,13 @@ class local_server():
     #
     #     return status
 
-    def geocell_sender(self, request,request_id):
+    def geocell_sender(self, request,request_id=None):
     
-            
-            data_to_send = json.dumps({'op': 'send_req_data', 'request_id': str(request_id), 'data': request}, ensure_ascii=False).encode()
+            if request_id:
+                 data_to_send = json.dumps({'op': 'send_req_data', 'data': request,'request_id':str(request_id)}, ensure_ascii=False).encode()
+            else:
+                data_to_send = json.dumps({'op': 'send_req_data', 'data': request},ensure_ascii=False).encode()
+                
              
           
                 
@@ -149,18 +152,22 @@ class local_server():
                
                 
                     if ack:
-                        
-                        status = request_id
-                       
+                        if not request_id:
+                            json_data = json.loads(ack)
+                            status = json_data['request_id']
+                        else:
+                            status=request_id
+                            
                         break
                     else:
                       
                         status = False
                         continue
             
-                except :
+                except Exception as e:
                     sock.settimeout(None)
                     status = False
+                    print(e)
                    #print('ვერ მიიღო აცკი')
                     continue
                     
@@ -278,6 +285,7 @@ class local_server():
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
             
             request = conn.recv(10000)
+            print('req sig'+str(len(request)))
             if request:
     
                 data = b''
@@ -299,12 +307,13 @@ class local_server():
                     reply += "Proxy-agent: Pyx\r\n"
                     reply += "\r\n"
                     conn.sendall(reply.encode())
-                   
 
-                    request_id = self.get_next_request_count()
-                   
-                    
-                    self. geocell_sender(request.decode(), request_id)
+                    # request_id = self.get_next_request_count()
+
+                    request_id= self. geocell_sender(request.decode())
+                    print(request_id)
+                    if not request_id:
+                        return
                     self.geocell_receiver(request_id, https=True)
                    
                     while True:
@@ -321,28 +330,32 @@ class local_server():
                             except:
                                 conn.settimeout(None)
                                 break
-                        print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
-                        self.geocell_sender(base64.encodebytes(request).decode(),request_id)
-                        data = self.geocell_receiver(request_id,https=True)
-                        print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
-                        if not data:
-                            conn.close()
-                            break
+                        if request:
+                            print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
+                            self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id)
+                            data = self.geocell_receiver(request_id,https=True)
+                            print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
+                            if not data:
+                                conn.close()
+                                break
+                                
 #აქ უნდა გზიპ დეკომპრესია
-                        data = gzip.decompress(data)
-                        conn.sendall(data)
+                            data = gzip.decompress(data)
+                            conn.sendall(data)
                     
                     
                 else:
-                    request_id = self.get_next_request_count()
-                    print('send request with id:' + str(request_id) + ' size: ' + str(len(request)))
-                    self.geocell_sender(request.decode(),request_id)
-        
-                    data = self.geocell_receiver(request_id)
-                    print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)))
-                    # აქ უნდა გზიპ დეკომპრესია
-                    data=gzip.decompress(data)
-                    conn.sendall(data)
+                   
+                    if request:
+                        request_id=self.geocell_sender(request.decode())
+                        if not request_id:
+                            return
+                        print('send request with id:' + str(request_id) + ' size: ' + str(len(request)))
+                        data = self.geocell_receiver(request_id)
+                        print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)))
+                        # აქ უნდა გზიპ დეკომპრესია
+                        data=gzip.decompress(data)
+                        conn.sendall(data)
         
         except Exception as e:
             pass
