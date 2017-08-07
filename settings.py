@@ -1,6 +1,6 @@
 socket_timeout=5#წამი
 remote_server_ip='37.187.55.53'
 remote_server_port=1327
-max_resend_try=3
-global_timeout=0.5
-recv_buff_size=4000
+max_resend_try=5
+global_timeout=0.8
+max_fragment_size=50000#65507

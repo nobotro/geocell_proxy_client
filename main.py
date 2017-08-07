@@ -150,7 +150,7 @@ class local_server():
                 
                  
                     sock.settimeout(settings.global_timeout)
-                    ack,addr = sock.recvfrom(65507)
+                    ack,addr = sock.recvfrom(settings.max_fragment_size)
                     sock.settimeout(None)
                   
                
@@ -201,7 +201,7 @@ class local_server():
                 t = datetime.datetime.now()
 
                 sock.settimeout(settings.global_timeout)
-                ack,addr= sock.recvfrom(65507)
+                ack,addr= sock.recvfrom(settings.max_fragment_size)
                 sock.settimeout(None)
                     
                #print('ack len'+str(len(ack)))
@@ -252,7 +252,7 @@ class local_server():
 
         sock.sendto( data_to_send,server_address)
      
-        data,addr=sock.recvfrom(65507)
+        data,addr=sock.recvfrom(settings.max_fragment_size)
        
         
         data=data.decode()
