@@ -189,11 +189,10 @@ class local_server():
         while counter < settings.max_resend_try:
             
             counter = counter + 1
-            
-            
-        
+
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+               
                 sock.sendto(data_to_send.encode(),server_address)
           
             
@@ -209,7 +208,7 @@ class local_server():
                
             
                 if ack:
-                    res_data += ack
+                    res_data = ack
                     data_to_send = json.dumps(
                         {'op': 'receive_fr_data','fr_index': fragment_id,'request_id': str(request_id),'action':'delete'},
                         ensure_ascii=False)
