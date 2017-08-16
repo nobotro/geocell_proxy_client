@@ -250,7 +250,7 @@ class local_server():
        
 
         sock.sendto( data_to_send,server_address)
-     
+        #აქ დასაფიქრებელია ცოტა,ტაიმაუტი ხო არ უნდა
         data,addr=sock.recvfrom(settings.max_fragment_size)
        
         
@@ -351,7 +351,7 @@ class local_server():
                     
                 else:
                    
-                    if request:
+                  
                         request_id=self.geocell_sender(request.decode())
                         if not request_id:
                             return
