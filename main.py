@@ -251,8 +251,13 @@ class local_server():
 
         sock.sendto( data_to_send,server_address)
         #აქ დასაფიქრებელია ცოტა,ტაიმაუტი ხო არ უნდა
-        data,addr=sock.recvfrom(settings.max_fragment_size)
-       
+        #დომებია,ჩავასწორე
+        try:
+            sock.settimeout(3)
+            data,addr=sock.recvfrom(settings.max_fragment_size)
+            sock.settimeout(None)
+        except:
+            return b''
         
         data=data.decode()
         incoming_data_fragments_length=int(data)
