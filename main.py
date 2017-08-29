@@ -121,12 +121,12 @@ class local_server():
     #
     #     return status
 
-    def geocell_sender(self, request,request_id=None):
+    def geocell_sender(self, request,request_id=None,https=False):
     
             if request_id:
-                 data_to_send = json.dumps({'op': 'send_req_data', 'data': request,'request_id':str(request_id)}, ensure_ascii=False).encode()
+                 data_to_send = json.dumps({'op': 'send_req_data', 'data': request,'request_id':str(request_id),'https':https}, ensure_ascii=False).encode()
             else:
-                data_to_send = json.dumps({'op': 'send_req_data', 'data': request},ensure_ascii=False).encode()
+                data_to_send = json.dumps({'op': 'send_req_data', 'data': request,'https':https},ensure_ascii=False).encode()
                 
              
           
@@ -138,13 +138,14 @@ class local_server():
         
             counter = 0
             status = ''
+            fr_count=0
             while counter < settings.max_resend_try:
             
                 counter = counter + 1
                
             
                 try:
-                     
+                    
                     sock.sendto(data_to_send,server_address)
                     
                 
@@ -160,6 +161,8 @@ class local_server():
                         if not request_id:
                             json_data = json.loads(ack)
                             status = json_data['request_id']
+                            fr_count=json_data['fr_count']
+                            
                         else:
                             status=request_id
                             
@@ -177,7 +180,7 @@ class local_server():
                    #print('ვერ მიიღო აცკი')
                     continue
                     
-            return status
+            return status,fr_count
 
     def threaded_receiver(self,fragment_id,request_id,res):
         server_address = (settings.remote_server_ip, settings.remote_server_port)
@@ -202,7 +205,7 @@ class local_server():
                 sock.settimeout(settings.global_timeout)
                 ack,addr= sock.recvfrom(settings.max_fragment_size)
                 sock.settimeout(None)
-                    
+                
                #print('ack len'+str(len(ack)))
                 t2 = datetime.datetime.now()
                
@@ -232,35 +235,17 @@ class local_server():
                
                 
         res.append({'counter':fragment_id,'data':res_data})
-         
+        
 
 
-    def geocell_receiver(self,request_id,https=False):
+    def geocell_receiver(self,request_id,https=False,fr_count=0):
         start = time.time()
-        if not https:
-            data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)}, ensure_ascii=False).encode()
-        else:
-            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id)},
+        
+        
+        data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id)},
                                       ensure_ascii=False).encode()
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-        server_address = (settings.remote_server_ip, settings.remote_server_port)
-        
-       
-
-        sock.sendto( data_to_send,server_address)
-        #აქ დასაფიქრებელია ცოტა,ტაიმაუტი ხო არ უნდა
-        #დომებია,ჩავასწორე
-        try:
-            sock.settimeout(3)
-            data,addr=sock.recvfrom(settings.max_fragment_size)
-            sock.settimeout(None)
-        except:
-            return b''
-        
-        data=data.decode()
-        incoming_data_fragments_length=int(data)
+ 
+        incoming_data_fragments_length=int(fr_count)
        #print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
 
        #print('geocell fragmentebis migebis interval ' + str(time.time()-start))
@@ -286,8 +271,8 @@ class local_server():
         start = time.time()-start
        #print('geocel receibving interval '+str(start))
         return res_data
-            
-            
+        
+        
     
     def request_handler(self, conn, addr):
         
@@ -320,11 +305,13 @@ class local_server():
 
                     # request_id = self.get_next_request_count()
 
-                    request_id= self. geocell_sender(request.decode())
+                    request_id,fr_count= self. geocell_sender(request.decode(),https=True)
                     
                     if not request_id:
                         return
-                    self.geocell_receiver(request_id, https=True)
+                    
+                    
+                    self.geocell_receiver(request_id, https=True,fr_count=fr_count)
                    
                     while True:
                         request=b''
@@ -342,8 +329,8 @@ class local_server():
                                 break
                         if request:
                             print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
-                            self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id)
-                            data = self.geocell_receiver(request_id,https=True)
+                            a,fr_count=self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id,https=True)
+                            data = self.geocell_receiver(request_id,https=True,fr_count=fr_count)
                             print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
                             if not data:
                                 conn.close()
@@ -357,11 +344,11 @@ class local_server():
                 else:
                    
                   
-                        request_id=self.geocell_sender(request.decode())
+                        request_id,fr_count=self.geocell_sender(request.decode())
                         if not request_id:
                             return
                         print('send request with id:' + str(request_id) + ' size: ' + str(len(request)))
-                        data = self.geocell_receiver(request_id)
+                        data = self.geocell_receiver(request_id,fr_count=fr_count)
                         print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)))
                         # აქ უნდა გზიპ დეკომპრესია
                         data=gzip.decompress(data)
@@ -376,6 +363,7 @@ class local_server():
 
 
 def server():
+    
     a=local_server()
     a.start_server()
 if __name__ == "__main__":
