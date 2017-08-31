@@ -338,9 +338,14 @@ class local_server():
                                  request+=t
                                  
                                  if not t:
+                                     conn.close()
                                      break
-                            except:
+                                 
+                            except socket.timeout:
                                 conn.settimeout(None)
+                                break
+                            except:
+                                conn.close()
                                 break
                         if request:
                             print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
