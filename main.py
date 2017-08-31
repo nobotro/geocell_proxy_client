@@ -327,8 +327,10 @@ class local_server():
                     self.geocell_receiver(request_id, https=True)
                    
                     while True:
+                      
                         request=b''
                         while True:
+                        
                             try:
                                  conn.settimeout(0.2)
                                  t=conn.recv(65000)
@@ -343,6 +345,7 @@ class local_server():
                         if request:
                             print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
                             self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id)
+                            data=None
                             data = self.geocell_receiver(request_id,https=True)
                             print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
                             if not data:
@@ -351,7 +354,13 @@ class local_server():
                                 
 #აქ უნდა გზიპ დეკომპრესია
                             data = gzip.decompress(data)
+                            conn.settimeout(0.2)
                             conn.sendall(data)
+                            conn.settimeout(None)
+                        else:
+                            conn.close()
+                            break
+                            
                     
                     
                 else:
