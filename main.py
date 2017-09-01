@@ -253,7 +253,7 @@ class local_server():
         #აქ დასაფიქრებელია ცოტა,ტაიმაუტი ხო არ უნდა
         #დომებია,ჩავასწორე
         try:
-            sock.settimeout(3)
+            sock.settimeout(settings.responce_timeout)
             data,addr=sock.recvfrom(settings.max_fragment_size)
             sock.settimeout(None)
         except:
@@ -359,14 +359,11 @@ class local_server():
                                 
 #აქ უნდა გზიპ დეკომპრესია
                             data = gzip.decompress(data)
-                            conn.settimeout(0.2)
                             conn.sendall(data)
-                            conn.settimeout(None)
                         else:
                             conn.close()
                             break
                             
-                    
                     
                 else:
                    
@@ -387,6 +384,16 @@ class local_server():
         
         finally:
             conn.close()
+            if request_id:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        
+                server_address = (settings.remote_server_ip, settings.remote_server_port)
+                data_to_send = json.dumps(
+                    {'op': 'clean', 'request_id': str(request_id),
+                     },
+                    ensure_ascii=False)
+                sock.sendto(data_to_send.encode(),server_address)
+            
 
 
 def server():
