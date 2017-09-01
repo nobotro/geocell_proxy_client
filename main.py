@@ -290,7 +290,7 @@ class local_server():
         
     
     def request_handler(self, conn, addr):
-        
+        request_id = ''
         try:
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
             
