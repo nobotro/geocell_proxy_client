@@ -1,6 +1,7 @@
 import base64
 import datetime
 import email
+import logging
 import socket
 
 from io import StringIO
@@ -291,14 +292,15 @@ class local_server():
     
     def request_handler(self, conn, addr):
         request_id = ''
+        data = b''
         try:
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
             
-            request = conn.recv(10000)
+            request = conn.recv(65000)
             # print('req sig'+str(len(request)))
             if request:
     
-                data = b''
+                
                 try:
                     _, headers = request.decode().split('\r\n', 1)
                 except:
@@ -317,7 +319,7 @@ class local_server():
                     reply += "Proxy-agent: Pyx\r\n"
                     reply += "\r\n"
                     conn.sendall(reply.encode())
-
+                    
                     # request_id = self.get_next_request_count()
 
                     request_id= self. geocell_sender(request.decode())
@@ -339,6 +341,7 @@ class local_server():
                                  
                                  if not t:
                                      conn.close()
+                                     request=''
                                      break
                                  
                             except socket.timeout:
@@ -346,23 +349,37 @@ class local_server():
                                 break
                             except:
                                 conn.close()
+                                request=''
                                 break
                         if request:
                             print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
-                            self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id)
-                            data=None
-                            data = self.geocell_receiver(request_id,https=True)
-                            print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
-                            if not data:
+                            if self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id):
+                                    data=None
+                                    data = self.geocell_receiver(request_id,https=True)
+                                    print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
+                                  
+                                    
+                                    #აქ უნდა გზიპ დეკომპრესია
+                                    if not data:
+                                        conn.close()
+                                        return
+                                     
+                                    data = gzip.decompress(data)
+                                    if not data:
+                                        conn.close()
+                                       
+                                        return
+        
+                                  
+                                  
+                                    conn.sendall(data)
+                            
+                            else:
                                 conn.close()
-                                break
-                                
-#აქ უნდა გზიპ დეკომპრესია
-                            data = gzip.decompress(data)
-                            conn.sendall(data)
+                                return
                         else:
                             conn.close()
-                            break
+                            return
                             
                     
                 else:
@@ -375,11 +392,20 @@ class local_server():
                         data = self.geocell_receiver(request_id)
                         print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)))
                         # აქ უნდა გზიპ დეკომპრესია
+                        if not data:
+                            conn.close()
+                            return
                         data=gzip.decompress(data)
+                        if not data:
+                            conn.close()
+                            return
+                         
                         conn.sendall(data)
+                        conn.close()
         
         except Exception as e:
             pass
+            logging.exception('message')
             print("error in request handler" + str(e))
         
         finally:
