@@ -278,14 +278,24 @@ class local_server():
             j.start()
         for j in ths:
             j.join()
-            
+         
+         
+         
+        if len(res)!=incoming_data_fragments_length:return b''
         res.sort(key=lambda x: x['counter'])
         
         for i in res:
-            res_data+=i['data']
+            dat=i['data']
+            if data:
+               res_data+=dat
+            else:return b''
 
-        start = time.time()-start
+        
        #print('geocel receibving interval '+str(start))
+        
+        
+        
+        
         return res_data
         
         
