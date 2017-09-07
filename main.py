@@ -138,9 +138,9 @@ class local_server():
                     data_to_send = json.dumps(
                         {'op': 'receive_fr_data','fr_index': fragment_id,'request_id': str(request_id),'action':'delete'},
                         ensure_ascii=False)
-                    sock.settimeout(settings.global_timeout)
+                     
                     sock.sendto(data_to_send.encode(), server_address)
-                    sock.settimeout(None)
+                    
                    
                 
                     # print("received fragment" + str(fragment_id) + ':' + str(request_id) + ' time:' + str(t2 - t))
@@ -303,8 +303,8 @@ class local_server():
                                         print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
     
                                      
-                                            
-                                            
+                                        
+                                        
                                         if not data:
                                             conn.close()
                                             return
