@@ -16,24 +16,6 @@ import time
 import json
 
 import gzip
-def recv_all(conn):
-    result = b''
-    while True:
-        try:
-            conn.settimeout(settings.socket_timeout)
-            data = conn.recv(4096)
-            conn.settimeout(None)
-            if data:
-                result += data
-            else:
-                raise Exception('sock_closed')
-        except socket.timeout:
-            conn.settimeout(None)
-            
-           #print("received all")
-    
-    return result
-
 
 class local_server():
     # შიდა პროქსის ip და port რომელიც უნდა მიუთითოთ ბრაუზერში
@@ -206,6 +188,7 @@ class local_server():
         
         data=data.decode()
         incoming_data_fragments_length=int(data)
+        if incoming_data_fragments_length==0:return b''
        #print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
 
        #print('geocell fragmentebis migebis interval ' + str(time.time()-start))
@@ -310,30 +293,35 @@ class local_server():
                             counter=0
                             
                             print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
-                            if self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id):
-                                    data=None
-                                    data = self.geocell_receiver(request_id,https=True)
-                                    print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
-                                  
-                                    
+                            while counter<settings.max_resend_try:
+                                
+                                if self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id):
+                                        data=None
+                                        data = self.geocell_receiver(request_id,https=True)
+                                        print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
+    
+                                        if not data:
+                                            data = self.geocell_receiver(request_id, https=True)
+                                            
+                                            
+                                            
+                                        if not data:
+                                            conn.close()
+                                            return
+                                         
+                                        data = gzip.decompress(data)
+                                        if not data:
+                                            conn.close()
+                                           
+                                            return
+            
+                                      
+                                      
+                                        conn.sendall(data)
+                                        break
+                                
+                               
                                  
-                                    if not data:
-                                        conn.close()
-                                        return
-                                     
-                                    data = gzip.decompress(data)
-                                    if not data:
-                                        conn.close()
-                                       
-                                        return
-        
-                                  
-                                  
-                                    conn.sendall(data)
-                            
-                            else:
-                                conn.close()
-                                return
                         else:
                             conn.close()
                             return
