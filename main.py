@@ -294,15 +294,15 @@ class local_server():
                             
                             print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
                             while counter<settings.max_resend_try:
-                                
+                                counter+=1
                                 if self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id):
+                                    
+                                    try:
                                         data=None
                                         data = self.geocell_receiver(request_id,https=True)
                                         print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
     
-                                        if not data:
-                                            data = self.geocell_receiver(request_id, https=True)
-                                            
+                                     
                                             
                                             
                                         if not data:
@@ -318,10 +318,13 @@ class local_server():
                                       
                                       
                                         conn.sendall(data)
+                                    except:
+                                        pass
+                                    finally:
                                         break
                                 
-                               
-                                 
+                                else:
+                                   continue
                         else:
                             conn.close()
                             return
