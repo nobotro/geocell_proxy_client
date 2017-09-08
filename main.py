@@ -307,7 +307,7 @@ class local_server():
                                     conn.close()
                                     return
     
-                                data = gzip.decompress(data)
+                                # data = gzip.decompress(data)
                                 if not data:
                                     conn.close()
         
@@ -336,7 +336,7 @@ class local_server():
                         if not data:
                             conn.close()
                             return
-                        data=gzip.decompress(data)
+                        # data=gzip.decompress(data)
                         if not data:
                             conn.close()
                             return
@@ -347,8 +347,7 @@ class local_server():
         except Exception as e:
             pass
             logging.exception('message')
-            print("error in request handler" + str(e))
-        
+            
         finally:
             conn.close()
             if request_id:
