@@ -293,38 +293,31 @@ class local_server():
                             counter=0
                             
                             print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
-                            while counter<settings.max_resend_try:
-                                counter+=1
-                                if self.geocell_sender(base64.encodebytes(request).decode(),request_id=request_id):
-                                    
-                                    try:
-                                        data=None
-                                        data = self.geocell_receiver(request_id,https=True)
-                                        print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)) + ' https:true')
+
+                            print('send request with id:' + str(request_id) + ' size: ' + str(
+                                len(request)) + ' https:true')
+                            if self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id):
+                                data = None
+                                data = self.geocell_receiver(request_id, https=True)
+                                print('receive responce with id:' + str(request_id) + ' size: ' + str(
+                                    len(data)) + ' https:true')
     
-                                     
-                                        
-                                        
-                                        if not data:
-                                            conn.close()
-                                            return
-                                         
-                                        data = gzip.decompress(data)
-                                        if not data:
-                                            conn.close()
-                                           
-                                            return
-            
-                                      
-                                      
-                                        conn.sendall(data)
-                                    except:
-                                        pass
-                                    finally:
-                                        break
-                                
-                                else:
-                                   continue
+                                # აქ უნდა გზიპ დეკომპრესია
+                                if not data:
+                                    conn.close()
+                                    return
+    
+                                data = gzip.decompress(data)
+                                if not data:
+                                    conn.close()
+        
+                                    return
+    
+                                conn.sendall(data)
+
+                            else:
+                                conn.close()
+                                return
                         else:
                             conn.close()
                             return
