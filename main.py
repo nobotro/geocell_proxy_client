@@ -296,31 +296,39 @@ class local_server():
 
                             print('send request with id:' + str(request_id) + ' size: ' + str(
                                 len(request)) + ' https:true')
-                            if self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id):
-                                data = None
-                                data = self.geocell_receiver(request_id, https=True)
-                                print('receive responce with id:' + str(request_id) + ' size: ' + str(
-                                    len(data)) + ' https:true')
-    
-                                # აქ უნდა გზიპ დეკომპრესია
-                                if not data:
-                                    conn.close()
-                                    return
-    
-                                data = gzip.decompress(data)
-                                if not data:
-                                    conn.close()
-        
-                                    return
-    
-                                conn.sendall(data)
-
+                            while counter<settings.max_resend_try:
+                                counter  +=1
+                                if self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id):
+                                    break
                             else:
                                 conn.close()
-                                return
+                                raise Exception()
+                        
+                            data = None
+                            data = self.geocell_receiver(request_id, https=True)
+                            print('receive responce with id:' + str(request_id) + ' size: ' + str(
+                                len(data)) + ' https:true')
+
+                            # აქ უნდა გზიპ დეკომპრესია
+                            if not data:
+                                conn.close()
+                                raise Exception()
+                             
+                            # tl=len(data)
+                            # data = gzip.decompress(data)
+                            # tl2=len(data)
+                            # print('==================== '+str(tl2)+ ' '+str(tl)+' ' +str(tl2-tl))
+                            if not data:
+                                conn.close()
+
+                                raise Exception()
+
+                            conn.sendall(data)
+
+                            
                         else:
                             conn.close()
-                            return
+                            raise Exception()
                             
                     
                 else:
@@ -328,28 +336,31 @@ class local_server():
                   
                         request_id=self.geocell_sender(request.decode())
                         if not request_id:
-                            return
+                            raise Exception()
                         print('send request with id:' + str(request_id) + ' size: ' + str(len(request)))
                         data = self.geocell_receiver(request_id)
                         print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)))
                         # აქ უნდა გზიპ დეკომპრესია
                         if not data:
                             conn.close()
-                            return
-                        data=gzip.decompress(data)
+                            raise Exception()
+                        # tl = len(data)
+                        # data = gzip.decompress(data)
+                        # tl2 = len(data)
+                        # print('==================== ' + str(tl2) + ' ' + str(tl) + ' ' + str(tl2 - tl))
                         if not data:
                             conn.close()
-                            return
+                            raise Exception()
                          
                         conn.sendall(data)
                         conn.close()
         
         except Exception as e:
             pass
-            logging.exception('message')
+            
             
         finally:
-            conn.close()
+            
             if request_id:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
@@ -359,6 +370,7 @@ class local_server():
                      },
                     ensure_ascii=False)
                 sock.sendto(data_to_send.encode(),server_address)
+                conn.close()
             
 
 
