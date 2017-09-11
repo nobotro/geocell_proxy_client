@@ -166,7 +166,7 @@ class local_server():
         if not https:
             data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)}, ensure_ascii=False).encode()
         else:
-            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id)},
+            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id),'first':firsts},
                                       ensure_ascii=False).encode()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -178,15 +178,19 @@ class local_server():
         sock.sendto( data_to_send,server_address)
         #აქ დასაფიქრებელია ცოტა,ტაიმაუტი ხო არ უნდა
         #დომებია,ჩავასწორე
-        if firsts:return b''
+    
         try:
             sock.settimeout(settings.responce_timeout)
             data,addr=sock.recvfrom(settings.max_fragment_size)
             sock.settimeout(None)
         except:
             return b''
-        
+         
         data=data.decode()
+        if firsts :
+            if data=='sesion_ack':
+                return 'sesion_ack'
+            else:return ''
         incoming_data_fragments_length=int(data)
         if incoming_data_fragments_length==0:return b''
        #print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
@@ -263,7 +267,10 @@ class local_server():
                     
                     if not request_id:
                         return
-                    self.geocell_receiver(request_id, https=True,firsts=True)
+                    counter=0
+                    while counter<settings.max_resend_try:
+                        ses_ack=self.geocell_receiver(request_id, https=True,firsts=True)
+                        if ses_ack:break
                     
                     while True:
                         data = b''
@@ -271,7 +278,7 @@ class local_server():
                         while True:
                         
                             try:
-                                 conn.settimeout(0.1)
+                                 conn.settimeout(0.2)
                                  t=conn.recv(65000)
                                  conn.settimeout(None)
                                  request+=t
