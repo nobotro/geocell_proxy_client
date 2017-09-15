@@ -62,14 +62,14 @@ class local_server():
           
                 
                 
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        
+             
             server_address = (settings.remote_server_ip, settings.remote_server_port)
         
             counter = 0
             status = ''
             while counter < settings.max_resend_try:
-            
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
                 counter = counter + 1
                
             
@@ -138,7 +138,7 @@ class local_server():
                     data_to_send = json.dumps(
                         {'op': 'receive_fr_data','fr_index': fragment_id,'request_id': str(request_id),'action':'delete'},
                         ensure_ascii=False)
-                     
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     sock.sendto(data_to_send.encode(), server_address)
                     
                    
@@ -278,7 +278,7 @@ class local_server():
                         while True:
                         
                             try:
-                                 conn.settimeout(0.2)
+                                 conn.settimeout(0.4)
                                  t=conn.recv(65000)
                                  conn.settimeout(None)
                                  request+=t
