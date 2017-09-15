@@ -41,14 +41,16 @@ class local_server():
         sock.listen(5)
 
         print('[*] start proxy client at ip {} and port {}'.format(self.local_proxy_ip,str(self.local_proxy_port)))
+        
         print('[*] protocol http/https')
         print('[*] socket protocol udp')
 
         while True:
             conn, addr = sock.accept()
+            
             thr = threading.Thread(target=self.request_handler, args=(conn, addr))
             thr.start()
-    
+            
     
 
     def geocell_sender(self, request,request_id=None):
@@ -68,13 +70,13 @@ class local_server():
             counter = 0
             status = ''
             while counter < settings.max_resend_try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    
+                
                 counter = counter + 1
                
             
                 try:
-                    
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
                     sock.sendto(data_to_send,server_address)
                     
                 
@@ -82,6 +84,7 @@ class local_server():
                     sock.settimeout(settings.global_timeout)
                     ack,addr = sock.recvfrom(settings.max_fragment_size)
                     sock.settimeout(None)
+                    sock.close()
                   
                
                 
@@ -120,9 +123,9 @@ class local_server():
             
             counter = counter + 1
 
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            
             try:
-               
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(data_to_send.encode(),server_address)
           
             
@@ -131,6 +134,7 @@ class local_server():
                 sock.settimeout(settings.global_timeout)
                 ack,addr= sock.recvfrom(settings.max_fragment_size)
                 sock.settimeout(None)
+                sock.close()
                 
               
                 if ack:
@@ -140,6 +144,7 @@ class local_server():
                         ensure_ascii=False)
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     sock.sendto(data_to_send.encode(), server_address)
+                    sock.close()
                     
                    
                 
@@ -183,7 +188,10 @@ class local_server():
             sock.settimeout(settings.responce_timeout)
             data,addr=sock.recvfrom(settings.max_fragment_size)
             sock.settimeout(None)
+            sock.close()
+            
         except:
+            sock.close()
             return b''
          
         data=data.decode()
@@ -262,10 +270,17 @@ class local_server():
                     conn.sendall(reply.encode())
                     
                     # request_id = self.get_next_request_count()
-
-                    request_id= self. geocell_sender(request.decode())
+                    counter=0
+                    while counter < settings.max_resend_try:
+                        counter += 1
+                        request_id= self. geocell_sender(request.decode())
+                        if request_id:break
+                    else:
+                        conn.close()
+                        return
                     
                     if not request_id:
+                        conn.close()
                         return
                     counter=0
                     while counter<settings.max_resend_try:
@@ -339,9 +354,14 @@ class local_server():
                             
                     
                 else:
-                   
-                  
-                        request_id=self.geocell_sender(request.decode())
+                        counter=0
+                        while counter < settings.max_resend_try:
+                            counter += 1
+                            request_id=self.geocell_sender(request.decode())
+                            if request_id:break
+                        else:
+                            raise Exception()
+                            
                         if not request_id:
                             raise Exception()
                         print('send request with id:' + str(request_id) + ' size: ' + str(len(request)))
@@ -363,6 +383,7 @@ class local_server():
                         conn.close()
         
         except Exception as e:
+            
             pass
             
             
@@ -377,6 +398,7 @@ class local_server():
                      },
                     ensure_ascii=False)
                 sock.sendto(data_to_send.encode(),server_address)
+                sock.close()
                 conn.close()
             
 

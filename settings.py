@@ -9,4 +9,4 @@ remote_server_port=1327
 max_resend_try=7
 global_timeout=0.5
 responce_timeout=4
-max_fragment_size=30000
+max_fragment_size=10000
