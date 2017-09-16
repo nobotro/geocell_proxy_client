@@ -284,6 +284,7 @@ class local_server():
                         return
                     counter=0
                     while counter<settings.max_resend_try:
+                        counter+=1
                         ses_ack=self.geocell_receiver(request_id, https=True,firsts=True)
                         if ses_ack:break
                     
@@ -291,11 +292,14 @@ class local_server():
                         data = b''
                         request=b''
                         while True:
-                        
+                            timeout=0.4
                             try:
-                                 conn.settimeout(0.4)
+                                 conn.settimeout(timeout)
+                                 st=datetime.datetime.now()
                                  t=conn.recv(65000)
+                                 ed=datetime.datetime.now()
                                  conn.settimeout(None)
+                                 timeout=(ed-st).total_seconds()+0.1
                                  request+=t
                                  
                                  if not t:
@@ -314,8 +318,7 @@ class local_server():
                             
                             counter=0
                             
-                            print('send request with id:' + str(request_id) + ' size: ' + str(len(request)) + ' https:true')
-
+                           
                             print('send request with id:' + str(request_id) + ' size: ' + str(
                                 len(request)) + ' https:true')
                             while counter<settings.max_resend_try:
