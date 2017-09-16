@@ -293,6 +293,7 @@ class local_server():
                         request=b''
                         while True:
                             timeout=0.4
+                            
                             try:
                                  conn.settimeout(timeout)
                                  st=datetime.datetime.now()
