@@ -48,6 +48,7 @@ class local_server():
         while True:
             conn, addr = sock.accept()
             
+            
             thr = threading.Thread(target=self.request_handler, args=(conn, addr))
             thr.start()
             
@@ -288,7 +289,7 @@ class local_server():
                         ses_ack=self.geocell_receiver(request_id, https=True,firsts=True)
                         if ses_ack:break
                     
-                    while True:
+                    for i in range(3):
                         data = b''
                         request=b''
                         while True:
