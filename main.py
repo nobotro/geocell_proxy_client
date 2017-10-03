@@ -54,12 +54,12 @@ class local_server():
             
     
 
-    def geocell_sender(self, request,request_id=None):
+    def geocell_sender(self, request,request_id=None,reqport=None,reqhost=None):
     
             if request_id:
                  data_to_send = json.dumps({'op': 'send_req_data', 'data': request,'request_id':str(request_id)}, ensure_ascii=False).encode()
             else:
-                data_to_send = json.dumps({'op': 'send_req_data', 'data': request},ensure_ascii=False).encode()
+                data_to_send = json.dumps({'op': 'send_req_data', 'data': request,'host':reqhost,'port':reqport},ensure_ascii=False).encode()
                 
              
           
@@ -77,7 +77,7 @@ class local_server():
             
                 try:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    
+
                     sock.sendto(data_to_send,server_address)
                     
                 
@@ -269,12 +269,22 @@ class local_server():
                     reply += "Proxy-agent: Pyx\r\n"
                     reply += "\r\n"
                     conn.sendall(reply.encode())
-                    
+
+
+
+                    host = headers['path']
+                    lr = host.split(':')
+                    host = lr[0]
+                    if len(lr) == 2:
+                        port = int(lr[1])
+
+
+                    first=True
                     # request_id = self.get_next_request_count()
                     counter=0
                     while counter < settings.max_resend_try:
                         counter += 1
-                        request_id= self. geocell_sender(request.decode())
+                        request_id= self. geocell_sender(request.decode(),reqhost=host,reqport=port)
                         if request_id:break
                     else:
                         conn.close()
@@ -284,11 +294,7 @@ class local_server():
                         conn.close()
                         return
                     counter=0
-                    while counter<settings.max_resend_try:
-                        counter+=1
-                        ses_ack=self.geocell_receiver(request_id, https=True,firsts=True)
-                        if ses_ack:break
-                    
+
                     for i in range(3):
                         data = b''
                         request=b''
