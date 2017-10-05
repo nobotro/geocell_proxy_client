@@ -92,6 +92,7 @@ class local_server():
                     if ack:
                         ack=ack.decode()
                         if not request_id:
+                            print('-----------------'+ack)
                             json_data = json.loads(ack)
                             status = json_data['request_id']
                         else:
@@ -167,12 +168,12 @@ class local_server():
         
 
 
-    def geocell_receiver(self,request_id,https=False,firsts=False):
+    def geocell_receiver(self,request_id,https=False):
         start = time.time()
         if not https:
             data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)}, ensure_ascii=False).encode()
         else:
-            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id),'first':firsts},
+            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id)},
                                       ensure_ascii=False).encode()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -196,21 +197,27 @@ class local_server():
             return b''
          
         data=data.decode()
-        if firsts :
-            if data=='sesion_ack':
-                return 'sesion_ack'
-            else:return ''
-        incoming_data_fragments_length=int(data)
+
+
+        data=json.load(data)
+        dlen=data['len']
+        fr_data=data['fragment']
+
+        first_fragment=base64.decodebytes(fr_data.encode())
+
+
+
+        incoming_data_fragments_length=dlen
         if incoming_data_fragments_length==0:return b''
        #print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
 
        #print('geocell fragmentebis migebis interval ' + str(time.time()-start))
         
-        res_data=b''
+        res_data=first_fragment
         
         res=[]
         ths=[]
-        for i in range(0,incoming_data_fragments_length):
+        for i in range(1,incoming_data_fragments_length):
          
             th=threading.Thread(target=self.threaded_receiver,args=(i,request_id,res))
             ths.append(th)
@@ -221,7 +228,7 @@ class local_server():
          
          
          
-        if len(res)!=incoming_data_fragments_length:return b''
+        if len(res)+1!=incoming_data_fragments_length:return b''
         res.sort(key=lambda x: x['counter'])
         
         for i in res:
@@ -269,6 +276,8 @@ class local_server():
                     reply += "Proxy-agent: Pyx\r\n"
                     reply += "\r\n"
                     conn.sendall(reply.encode())
+
+
 
 
 
