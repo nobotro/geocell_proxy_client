@@ -165,7 +165,7 @@ class local_server():
 
         try:
             sock.settimeout(settings.responce_timeout)
-            data, addr = sock.recvfrom(settings.max_fragment_size)
+            data, addr = sock.recvfrom(settings.max_fragment_size*3)
             sock.settimeout(None)
             sock.close()
 
@@ -174,22 +174,31 @@ class local_server():
             return b''
 
         data = data.decode()
+        print('************'+str(data))
         if firsts:
             if data == 'sesion_ack':
                 return 'sesion_ack'
             else:
                 return ''
-        incoming_data_fragments_length = int(data)
+        data = json.loads(data)
+        print('|||||||||||||||||||||||||||||||||||||||||||')
+        dlen = data['len']
+        fr_data = data['fragment']
+
+        first_fragment = base64.decodebytes(fr_data.encode())
+        incoming_data_fragments_length = dlen
+
+        incoming_data_fragments_length = int(dlen)
         if incoming_data_fragments_length == 0: return b''
         # print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
 
         # print('geocell fragmentebis migebis interval ' + str(time.time()-start))
 
-        res_data = b''
+        res_data =first_fragment
 
         res = []
         ths = []
-        for i in range(0, incoming_data_fragments_length):
+        for i in range(1, incoming_data_fragments_length):
             th = threading.Thread(target=self.threaded_receiver, args=(i, request_id, res))
             ths.append(th)
         for j in ths:
@@ -197,7 +206,7 @@ class local_server():
         for j in ths:
             j.join()
 
-        if len(res) != incoming_data_fragments_length: return b''
+        if len(res)+1 != incoming_data_fragments_length: return b''
         res.sort(key=lambda x: x['counter'])
 
         for i in res:
