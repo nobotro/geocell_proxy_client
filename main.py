@@ -146,13 +146,13 @@ class local_server():
 
         res.append({'counter': fragment_id, 'data': res_data})
 
-    def geocell_receiver(self, request_id, https=False, firsts=False):
+    def geocell_receiver(self, request_id, https=False):
         start = time.time()
         if not https:
             data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)},
                                       ensure_ascii=False).encode()
         else:
-            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id), 'first': firsts},
+            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id)},
                                       ensure_ascii=False).encode()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -174,14 +174,10 @@ class local_server():
             return b''
 
         data = data.decode()
-        print('************'+str(data))
-        if firsts:
-            if data == 'sesion_ack':
-                return 'sesion_ack'
-            else:
-                return ''
+        print('************'+str(len(data)))
+
         data = json.loads(data)
-        print('|||||||||||||||||||||||||||||||||||||||||||')
+        # print('|||||||||||||||||||||||||||||||||||||||||||')
         dlen = data['len']
         fr_data = data['fragment']
 
@@ -327,10 +323,7 @@ class local_server():
                             # data = gzip.decompress(data)
                             # tl2=len(data)
                             # print('==================== '+str(tl2)+ ' '+str(tl)+' ' +str(tl2-tl))
-                            if not data:
-                                conn.close()
 
-                                raise Exception()
 
                             conn.sendall(data)
 
