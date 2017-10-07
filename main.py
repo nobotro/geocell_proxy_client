@@ -187,21 +187,21 @@ class local_server():
             return b''
 
         data = data.decode()
-        print('************'+str(len(data)))
+        # print('************'+str(len(data)))
 
-        if data=='0':
+        if len(data)==1:
             sock.close()
             return b''
         data = json.loads(data)
         # print('|||||||||||||||||||||||||||||||||||||||||||')
-        print(data)
+        # print(data)
         dlen = data['len']
         fr_data = data['fragment']
 
         first_fragment = base64.decodebytes(fr_data.encode())
-        print('fr ken'+str(dlen))
-        print('b64len'+str(len(fr_data)))
-        print('bytelen'+str(len(first_fragment)))
+        # print('fr ken'+str(dlen))
+        # print('b64len'+str(len(fr_data)))
+        # print('bytelen'+str(len(first_fragment)))
 
         incoming_data_fragments_length = dlen
 
@@ -302,7 +302,7 @@ class local_server():
 
                     if not request_id:
                         conn.close()
-                        return
+                        raise Exception('reqvestis aidi ar momivida')
                     counter = 0
 
                     for i in range(3):
@@ -350,7 +350,7 @@ class local_server():
                             # აქ უნდა გზიპ დეკომპრესია
                             if not data:
                                 conn.close()
-                                raise Exception()
+                                raise Exception('jreciverma carieli data')
 
                             # tl=len(data)
                             # data = gzip.decompress(data)
@@ -363,7 +363,7 @@ class local_server():
 
                         else:
                             conn.close()
-                            raise Exception()
+                            raise Exception('brauzerma reqvesti ar mogvca')
 
 
                 else:
