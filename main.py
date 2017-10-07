@@ -28,7 +28,11 @@ class local_server():
 
     def get_next_request_count(self, *args):
 
+
+
+
         self.thread_lock.acquire()
+
         res = self.requests_counter + 1
         self.requests_counter = res
         self.thread_lock.release()
@@ -38,6 +42,8 @@ class local_server():
 
         # იხსნება სოკეტი და იწყება პორტზე მოსმენა
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
         sock.bind((self.local_proxy_ip, self.local_proxy_port))
         sock.listen(5)
 
@@ -71,6 +77,8 @@ class local_server():
 
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
 
                 sock.sendto(data_to_send, server_address)
 
@@ -115,6 +123,8 @@ class local_server():
 
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
                 sock.sendto(data_to_send.encode(), server_address)
 
                 sock.settimeout(settings.global_timeout)
@@ -129,6 +139,8 @@ class local_server():
                          'action': 'delete'},
                         ensure_ascii=False)
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
                     sock.sendto(data_to_send.encode(), server_address)
                     sock.close()
 
@@ -156,6 +168,7 @@ class local_server():
                                       ensure_ascii=False).encode()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
         server_address = (settings.remote_server_ip, settings.remote_server_port)
 
@@ -176,12 +189,20 @@ class local_server():
         data = data.decode()
         print('************'+str(len(data)))
 
+        if data=='0':
+            sock.close()
+            return b''
         data = json.loads(data)
         # print('|||||||||||||||||||||||||||||||||||||||||||')
+        print(data)
         dlen = data['len']
         fr_data = data['fragment']
 
         first_fragment = base64.decodebytes(fr_data.encode())
+        print('fr ken'+str(dlen))
+        print('b64len'+str(len(fr_data)))
+        print('bytelen'+str(len(first_fragment)))
+
         incoming_data_fragments_length = dlen
 
         incoming_data_fragments_length = int(dlen)
@@ -223,7 +244,28 @@ class local_server():
         try:
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
 
-            request = conn.recv(65000)
+
+            request = b''
+            while True:
+                timeout = 0.5
+
+                try:
+                    conn.settimeout(timeout)
+                    st = datetime.datetime.now()
+                    t = conn.recv(65000)
+                    ed = datetime.datetime.now()
+                    conn.settimeout(None)
+                    timeout = (ed - st).total_seconds() + 0.1
+                    request += t
+
+                    if not t:
+                        conn.close()
+                        request = ''
+                        break
+
+                except socket.timeout:
+                    conn.settimeout(None)
+                    break
             # print('req sig'+str(len(request)))
             if request:
 
@@ -244,6 +286,7 @@ class local_server():
                     reply = "HTTP/1.0 200 Connection established\r\n"
                     reply += "Proxy-agent: Pyx\r\n"
                     reply += "\r\n"
+                    time.sleep(0.1)
                     conn.sendall(reply.encode())
 
                     host = headers['path']
@@ -254,14 +297,8 @@ class local_server():
 
                     first = True
                     # request_id = self.get_next_request_count()
-                    counter = 0
-                    while counter < settings.max_resend_try:
-                        counter += 1
-                        request_id = self.geocell_sender(request.decode(), reqhost=host, reqport=port)
-                        if request_id: break
-                    else:
-                        conn.close()
-                        return
+
+                    request_id = self.geocell_sender(request.decode(), reqhost=host, reqport=port)
 
                     if not request_id:
                         conn.close()
@@ -272,7 +309,7 @@ class local_server():
                         data = b''
                         request = b''
                         while True:
-                            timeout = 0.4
+                            timeout = 0.5
 
                             try:
                                 conn.settimeout(timeout)
@@ -301,13 +338,9 @@ class local_server():
 
                             print('send request with id:' + str(request_id) + ' size: ' + str(
                                 len(request)) + ' https:true')
-                            while counter < settings.max_resend_try:
-                                counter += 1
-                                if self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id):
-                                    break
-                            else:
-                                conn.close()
-                                raise Exception()
+
+                            self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id)
+
 
                             data = None
                             data = self.geocell_receiver(request_id, https=True)
@@ -364,7 +397,9 @@ class local_server():
 
         except Exception as e:
 
-            pass
+
+           logging.exception('message')
+           print(str(e))
 
 
         finally:
@@ -372,6 +407,7 @@ class local_server():
             if request_id:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
                 server_address = (settings.remote_server_ip, settings.remote_server_port)
                 data_to_send = json.dumps(
                     {'op': 'clean', 'request_id': str(request_id),
