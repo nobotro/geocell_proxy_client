@@ -42,7 +42,7 @@ class local_server():
 
         # იხსნება სოკეტი და იწყება პორტზე მოსმენა
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
 
         sock.bind((self.local_proxy_ip, self.local_proxy_port))
         sock.listen(5)
@@ -77,7 +77,7 @@ class local_server():
 
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
 
 
                 sock.sendto(data_to_send, server_address)
@@ -86,6 +86,7 @@ class local_server():
                 ack, addr = sock.recvfrom(settings.max_fragment_size)
                 sock.settimeout(None)
                 sock.close()
+
 
                 if ack:
                     ack = ack.decode()
@@ -123,7 +124,7 @@ class local_server():
 
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
 
                 sock.sendto(data_to_send.encode(), server_address)
 
@@ -139,7 +140,7 @@ class local_server():
                          'action': 'delete'},
                         ensure_ascii=False)
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
 
                     sock.sendto(data_to_send.encode(), server_address)
                     sock.close()
@@ -159,7 +160,7 @@ class local_server():
         res.append({'counter': fragment_id, 'data': res_data})
 
     def geocell_receiver(self, request_id, https=False):
-        start = time.time()
+        ffst = datetime.datetime.now()
         if not https:
             data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)},
                                       ensure_ascii=False).encode()
@@ -168,14 +169,14 @@ class local_server():
                                       ensure_ascii=False).encode()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
 
         server_address = (settings.remote_server_ip, settings.remote_server_port)
 
         sock.sendto(data_to_send, server_address)
         # აქ დასაფიქრებელია ცოტა,ტაიმაუტი ხო არ უნდა
         # დომებია,ჩავასწორე
-
+        imm=datetime.datetime.now()
         try:
             sock.settimeout(settings.responce_timeout)
             data, addr = sock.recvfrom(settings.max_fragment_size*3)
@@ -184,9 +185,12 @@ class local_server():
 
         except:
             sock.close()
+            print('=============error=================')
             return b''
-
+        imme=datetime.datetime.now()
+        print('imena migebis dro '+str((imme-imm).total_seconds()))
         data = data.decode()
+        print('<<<<<>>>>>>>>'+str(len(data))+'<<<<<<<<<<<<<>>>>>>>>')
         # print('************'+str(len(data)))
 
         if len(data)==1:
@@ -215,6 +219,8 @@ class local_server():
 
         res = []
         ths = []
+        ffed=datetime.datetime.now()
+        print('fragmentamde dro '+str((ffed-ffst).total_seconds()))
         for i in range(1, incoming_data_fragments_length):
             th = threading.Thread(target=self.threaded_receiver, args=(i, request_id, res))
             ths.append(th)
@@ -239,33 +245,25 @@ class local_server():
         return res_data
 
     def request_handler(self, conn, addr):
+        print('vananvangavali')
         request_id = ''
         data = b''
         try:
             # მივიღოთ დატა ბრაუზერისგან,ან სხვა პროქსი კლიენტისგან
 
 
-            request = b''
-            while True:
-                timeout = 0.5
+            request =  conn.recv(65000)
+            try:
+                conn.settimeout(0.1)
+                tempp = conn.recv(1)
+                conn.settimeout(None)
+                request += tempp
+                if tempp:
+                    print('^^^^^^^^^^^^^aaaaa')
+            except Exception as e:
+                conn.settimeout(None)
+                pass
 
-                try:
-                    conn.settimeout(timeout)
-                    st = datetime.datetime.now()
-                    t = conn.recv(65000)
-                    ed = datetime.datetime.now()
-                    conn.settimeout(None)
-                    timeout = (ed - st).total_seconds() + 0.1
-                    request += t
-
-                    if not t:
-                        conn.close()
-                        request = ''
-                        break
-
-                except socket.timeout:
-                    conn.settimeout(None)
-                    break
             # print('req sig'+str(len(request)))
             if request:
 
@@ -286,7 +284,7 @@ class local_server():
                     reply = "HTTP/1.0 200 Connection established\r\n"
                     reply += "Proxy-agent: Pyx\r\n"
                     reply += "\r\n"
-                    time.sleep(0.1)
+
                     conn.sendall(reply.encode())
 
                     host = headers['path']
@@ -303,70 +301,76 @@ class local_server():
                     if not request_id:
                         conn.close()
                         raise Exception('reqvestis aidi ar momivida')
-                    counter = 0
+                    counterr = 0
 
-                    for i in range(3):
+                    for i in range(7):
+
+
+
+                        counterr+=1
+                        print(str(counterr))
                         data = b''
-                        request = b''
+
+                        print('brauzeridan vigeb datas')
+                        request= conn.recv(65000)
+
                         while True:
-                            timeout = 0.5
-
                             try:
-                                conn.settimeout(timeout)
-                                st = datetime.datetime.now()
-                                t = conn.recv(65000)
-                                ed = datetime.datetime.now()
+
+                                conn.settimeout(0.1)
+                                tempp=conn.recv(65000)
                                 conn.settimeout(None)
-                                timeout = (ed - st).total_seconds() + 0.1
-                                request += t
-
-                                if not t:
-                                    conn.close()
-                                    request = ''
-                                    break
-
-                            except socket.timeout:
+                                request+=tempp
+                                if tempp:
+                                    print('(((((((((((((((((((((dfdddsfsd'+ str(len(tempp)))
+                                else:break
+                            except Exception as e:
                                 conn.settimeout(None)
                                 break
-                            except:
-                                conn.close()
-                                request = ''
-                                break
+
+
+                        print('brauzeridan data amovige'+str(request))
+
                         if request:
-
+                            ssss = datetime.datetime.now()
                             counter = 0
 
                             print('send request with id:' + str(request_id) + ' size: ' + str(
                                 len(request)) + ' https:true')
+                            gggg=datetime.datetime.now()
+                            if self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id):
+                                ggee=datetime.datetime.now()
+                                print('gc need '+ str((ggee-gggg).total_seconds()))
+                                data = None
 
-                            self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id)
+                                ggrr=datetime.datetime.now()
+                                data = self.geocell_receiver(request_id, https=True)
+                                ggse=datetime.datetime.now()
+                                print('gc rec need '+str((ggse-ggrr).total_seconds()))
+                                print('receive responce with id:' + str(request_id) + ' size: ' + str(
+                                    len(data)) + ' https:true')
 
+                                # აქ უნდა გზიპ დეკომპრესია
+                                if not data:
+                                    conn.close()
+                                    raise Exception('jreciverma carieli data')
 
-                            data = None
-                            data = self.geocell_receiver(request_id, https=True)
-                            print('receive responce with id:' + str(request_id) + ' size: ' + str(
-                                len(data)) + ' https:true')
+                                # tl=len(data)
+                                # data = gzip.decompress(data)
+                                # tl2=len(data)
+                                # print('==================== '+str(tl2)+ ' '+str(tl)+' ' +str(tl2-tl))
 
-                            # აქ უნდა გზიპ დეკომპრესია
-                            if not data:
-                                conn.close()
-                                raise Exception('jreciverma carieli data')
-
-                            # tl=len(data)
-                            # data = gzip.decompress(data)
-                            # tl2=len(data)
-                            # print('==================== '+str(tl2)+ ' '+str(tl)+' ' +str(tl2-tl))
-
-
-                            conn.sendall(data)
-
-
+                                print('brauzers miveco data '+str(len(data)))
+                                conn.sendall(data)
+                                ffff=datetime.datetime.now()
+                                print('dr '+str((ffff-ssss).total_seconds()))
                         else:
                             conn.close()
                             raise Exception('brauzerma reqvesti ar mogvca')
 
 
                 else:
+                    print('*****************************')
                     counter = 0
                     while counter < settings.max_resend_try:
                         counter += 1
@@ -407,7 +411,7 @@ class local_server():
             if request_id:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
                 server_address = (settings.remote_server_ip, settings.remote_server_port)
                 data_to_send = json.dumps(
                     {'op': 'clean', 'request_id': str(request_id),
