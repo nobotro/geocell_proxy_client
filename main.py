@@ -253,16 +253,16 @@ class local_server():
 
 
             request =  conn.recv(65000)
-            try:
-                conn.settimeout(0.1)
-                tempp = conn.recv(1)
-                conn.settimeout(None)
-                request += tempp
-                if tempp:
-                    print('^^^^^^^^^^^^^aaaaa')
-            except Exception as e:
-                conn.settimeout(None)
-                pass
+            # try:
+            #     conn.settimeout(0.1)
+            #     tempp = conn.recv(1)
+            #     conn.settimeout(None)
+            #     request += tempp
+            #     if tempp:
+            #         print('^^^^^^^^^^^^^aaaaa')
+            # except Exception as e:
+            #     conn.settimeout(None)
+            #     pass
 
             # print('req sig'+str(len(request)))
             if request:
@@ -286,6 +286,7 @@ class local_server():
                     reply += "\r\n"
 
                     conn.sendall(reply.encode())
+                    # time.sleep(0.1)
 
                     host = headers['path']
                     lr = host.split(':')
@@ -312,18 +313,18 @@ class local_server():
                         data = b''
 
                         print('brauzeridan vigeb datas')
-                        request= conn.recv(65000)
-
+                        # request= conn.recv(65000)
+                        request=b''
                         while True:
                             try:
 
+                                temp = b''
                                 conn.settimeout(0.1)
-                                tempp=conn.recv(65000)
+                                temp = conn.recv(1)
                                 conn.settimeout(None)
-                                request+=tempp
-                                if tempp:
-                                    print('(((((((((((((((((((((dfdddsfsd'+ str(len(tempp)))
-                                else:break
+                                if len(temp) != 1: break
+                                temp += conn.recv(65000)
+                                request += temp
                             except Exception as e:
                                 conn.settimeout(None)
                                 break
