@@ -207,7 +207,7 @@ class local_server():
         # print('b64len'+str(len(fr_data)))
         # print('bytelen'+str(len(first_fragment)))
 
-        incoming_data_fragments_length = dlen
+
 
         incoming_data_fragments_length = int(dlen)
         if incoming_data_fragments_length == 0: return b''
@@ -286,7 +286,7 @@ class local_server():
                     reply += "\r\n"
 
                     conn.sendall(reply.encode())
-                    # time.sleep(0.1)
+                    time.sleep(0.01)
 
                     host = headers['path']
                     lr = host.split(':')
@@ -313,13 +313,13 @@ class local_server():
                         data = b''
 
                         print('brauzeridan vigeb datas')
-                        # request= conn.recv(65000)
-                        request=b''
+                        request= conn.recv(65000)
+
                         while True:
                             try:
 
                                 temp = b''
-                                conn.settimeout(0.1)
+                                conn.settimeout(0.3)
                                 temp = conn.recv(1)
                                 conn.settimeout(None)
                                 if len(temp) != 1: break
@@ -330,7 +330,7 @@ class local_server():
                                 break
 
 
-                        print('brauzeridan data amovige'+str(request))
+                        print('brauzeridan data amovige'+str(len(request)))
 
                         if request:
                             ssss = datetime.datetime.now()
