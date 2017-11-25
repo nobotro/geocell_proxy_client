@@ -16,6 +16,7 @@ import time
 import json
 
 import gzip
+import random
 
 
 class local_server():
@@ -53,12 +54,13 @@ class local_server():
         print('[*] socket protocol udp')
 
         while True:
+
             conn, addr = sock.accept()
 
             thr = threading.Thread(target=self.request_handler, args=(conn, addr))
             thr.start()
 
-    def geocell_sender(self, request, request_id=None, reqport=None, reqhost=None):
+    def geocell_sender(self, request, request_id=None, reqport=None, reqhost=None,random_port=random.choice(settings.remote_server_port_range)):
 
         if request_id:
             data_to_send = json.dumps({'op': 'send_req_data', 'data': request, 'request_id': str(request_id)},
@@ -67,7 +69,7 @@ class local_server():
             data_to_send = json.dumps({'op': 'send_req_data', 'data': request, 'host': reqhost, 'port': reqport},
                                       ensure_ascii=False).encode()
 
-        server_address = (settings.remote_server_ip, settings.remote_server_port)
+        server_address = (settings.remote_server_ip, random_port)
 
         counter = 0
         status = ''
@@ -111,8 +113,8 @@ class local_server():
 
         return status
 
-    def threaded_receiver(self, fragment_id, request_id, res):
-        server_address = (settings.remote_server_ip, settings.remote_server_port)
+    def threaded_receiver(self, fragment_id, request_id, res,random_port=random.choice(settings.remote_server_port_range)):
+        server_address = (settings.remote_server_ip, random_port)
 
         data_to_send = json.dumps({'op': 'receive_fr_data', 'request_id': str(request_id), 'fr_index': fragment_id},
                                   ensure_ascii=False)
@@ -159,7 +161,7 @@ class local_server():
 
         res.append({'counter': fragment_id, 'data': res_data})
 
-    def geocell_receiver(self, request_id, https=False):
+    def geocell_receiver(self, request_id, https=False,random_port=random.choice(settings.remote_server_port_range)):
         ffst = datetime.datetime.now()
         if not https:
             data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)},
@@ -171,7 +173,7 @@ class local_server():
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
-        server_address = (settings.remote_server_ip, settings.remote_server_port)
+        server_address = (settings.remote_server_ip, random_port)
 
         sock.sendto(data_to_send, server_address)
         # აქ დასაფიქრებელია ცოტა,ტაიმაუტი ხო არ უნდა
@@ -244,7 +246,7 @@ class local_server():
 
         return res_data
 
-    def request_handler(self, conn, addr):
+    def request_handler(self, conn, addr,random_port=random.choice(settings.remote_server_port_range)):
         print('vananvangavali')
         request_id = ''
         data = b''
@@ -294,8 +296,6 @@ class local_server():
                     if len(lr) == 2:
                         port = int(lr[1])
 
-                    first = True
-                    # request_id = self.get_next_request_count()
 
                     request_id = self.geocell_sender(request.decode(), reqhost=host, reqport=port)
 
@@ -319,13 +319,19 @@ class local_server():
                             try:
 
                                 temp = b''
-                                conn.settimeout(0.3)
+                                conn.settimeout(0.1)
+
                                 temp = conn.recv(1)
+
                                 conn.settimeout(None)
+
                                 if len(temp) != 1: break
                                 temp += conn.recv(65000)
                                 request += temp
                             except Exception as e:
+
+                                print('======================')
+
                                 conn.settimeout(None)
                                 break
 
@@ -413,7 +419,7 @@ class local_server():
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
-                server_address = (settings.remote_server_ip, settings.remote_server_port)
+                server_address = (settings.remote_server_ip, random_port)
                 data_to_send = json.dumps(
                     {'op': 'clean', 'request_id': str(request_id),
                      },
