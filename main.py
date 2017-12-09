@@ -60,13 +60,13 @@ class local_server():
             thr = threading.Thread(target=self.request_handler, args=(conn, addr))
             thr.start()
 
-    def geocell_sender(self, request, request_id=None, reqport=None, reqhost=None,random_port=random.choice(settings.remote_server_port_range)):
+    def geocell_sender(self, request, request_id=None, reqport=None, reqhost=None,random_port=random.choice(settings.remote_server_port_range),biji=None):
 
         if request_id:
-            data_to_send = json.dumps({'op': 'send_req_data', 'data': request, 'request_id': str(request_id)},
+            data_to_send = json.dumps({'op': 'send_req_data', 'data': request, 'request_id': str(request_id),'biji':biji},
                                       ensure_ascii=False).encode()
         else:
-            data_to_send = json.dumps({'op': 'send_req_data', 'data': request, 'host': reqhost, 'port': reqport},
+            data_to_send = json.dumps({'op': 'send_req_data', 'data': request, 'host': reqhost, 'port': reqport,'biji':biji},
                                       ensure_ascii=False).encode()
 
         server_address = (settings.remote_server_ip, random_port)
@@ -92,6 +92,7 @@ class local_server():
 
                 if ack:
                     ack = ack.decode()
+
                     if not request_id:
                         json_data = json.loads(ack)
                         status = json_data['request_id']
@@ -113,10 +114,11 @@ class local_server():
 
         return status
 
-    def threaded_receiver(self, fragment_id, request_id, res,random_port=random.choice(settings.remote_server_port_range)):
+    def threaded_receiver(self, fragment_id, request_id, res,biji=None,random_port=random.choice(settings.remote_server_port_range),):
+
         server_address = (settings.remote_server_ip, random_port)
 
-        data_to_send = json.dumps({'op': 'receive_fr_data', 'request_id': str(request_id), 'fr_index': fragment_id},
+        data_to_send = json.dumps({'op': 'receive_fr_data', 'request_id': str(request_id), 'fr_index': fragment_id,'biji':biji},
                                   ensure_ascii=False)
         counter = 0
         res_data = b''
@@ -139,7 +141,7 @@ class local_server():
                     res_data = ack
                     data_to_send = json.dumps(
                         {'op': 'receive_fr_data', 'fr_index': fragment_id, 'request_id': str(request_id),
-                         'action': 'delete'},
+                         'action': 'delete','biji':biji},
                         ensure_ascii=False)
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -161,13 +163,13 @@ class local_server():
 
         res.append({'counter': fragment_id, 'data': res_data})
 
-    def geocell_receiver(self, request_id, https=False,random_port=random.choice(settings.remote_server_port_range)):
+    def geocell_receiver(self, request_id, https=False,random_port=random.choice(settings.remote_server_port_range),biji=None):
         ffst = datetime.datetime.now()
         if not https:
-            data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id)},
+            data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id),'biji':biji},
                                       ensure_ascii=False).encode()
         else:
-            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id)},
+            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id),'biji':biji},
                                       ensure_ascii=False).encode()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -224,7 +226,7 @@ class local_server():
         ffed=datetime.datetime.now()
 
         for i in range(1, incoming_data_fragments_length):
-            th = threading.Thread(target=self.threaded_receiver, args=(i, request_id, res))
+            th = threading.Thread(target=self.threaded_receiver, args=(i, request_id, res,biji,))
             ths.append(th)
         for j in ths:
             j.start()
@@ -310,6 +312,7 @@ class local_server():
 
 
 
+
                         data = b''
 
 
@@ -336,7 +339,7 @@ class local_server():
                                 break
 
 
-                        print('{} , amovige brauzerisgan reqvesti, biji {}'.format(request_id,i))
+
                         recchaci = b'\x14\x03'
 
                         recalert = b'\x15\x03'
@@ -346,19 +349,26 @@ class local_server():
                         datarec = b'\x17\x03'
 
                         patterns = [recchaci, recalert, rechand, datarec]
-
+                        res=[]
+                        for pat in patterns:
+                            res.append(request.rfind(pat))
 
 
 
 
 
                         if request:
+                            print('{} , amovige brauzerisgan reqvesti, biji {},paternebi {} , pozociebi{}'.format(
+                                request_id, i, patterns, res))
+
                             ssss = datetime.datetime.now()
                             counter = 0
 
 
                             gggg=datetime.datetime.now()
-                            if self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id):
+                            if self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id,biji=i):
+                                print('{} ,-> servers gavugzavne reqvesti, biji {}'.format(
+                                    request_id, i))
 
                                 ggee=datetime.datetime.now()
 
@@ -366,14 +376,20 @@ class local_server():
                                 data = None
 
                                 ggrr=datetime.datetime.now()
-                                data = self.geocell_receiver(request_id, https=True)
+                                data = self.geocell_receiver(request_id, https=True,biji=i)
+
+
                                 ggse=datetime.datetime.now()
 
 
                                 # აქ უნდა გზიპ დეკომპრესია
                                 if not data:
                                     conn.close()
-                                    raise Exception('jreciverma carieli data')
+                                    raise Exception('{} ,<- serverma carieli responsi mogvca , biji {}'.format(request_id,i))
+
+
+                                print('{} ,<- serveridan mivige responsi, biji {}, zoma {}'.format(
+                                    request_id, i, len(data)))
 
                                 # tl=len(data)
                                 # data = gzip.decompress(data)
@@ -384,7 +400,7 @@ class local_server():
 
                         else:
                             conn.close()
-                            raise Exception('brauzerma reqvesti ar mogvca')
+                            raise Exception('{} , brauzerma reqvesti ar mogvca , biji {}'.format(request_id,i))
 
 
                 else:
