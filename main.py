@@ -187,12 +187,12 @@ class local_server():
 
         except:
             sock.close()
-            print('=============error=================')
+
             return b''
         imme=datetime.datetime.now()
-        print('imena migebis dro '+str((imme-imm).total_seconds()))
+
         data = data.decode()
-        print('<<<<<>>>>>>>>'+str(len(data))+'<<<<<<<<<<<<<>>>>>>>>')
+
         # print('************'+str(len(data)))
 
         if len(data)==1:
@@ -222,7 +222,7 @@ class local_server():
         res = []
         ths = []
         ffed=datetime.datetime.now()
-        print('fragmentamde dro '+str((ffed-ffst).total_seconds()))
+
         for i in range(1, incoming_data_fragments_length):
             th = threading.Thread(target=self.threaded_receiver, args=(i, request_id, res))
             ths.append(th)
@@ -247,7 +247,7 @@ class local_server():
         return res_data
 
     def request_handler(self, conn, addr,random_port=random.choice(settings.remote_server_port_range)):
-        print('vananvangavali')
+
         request_id = ''
         data = b''
         try:
@@ -299,21 +299,22 @@ class local_server():
 
                     request_id = self.geocell_sender(request.decode(), reqhost=host, reqport=port)
 
+
                     if not request_id:
                         conn.close()
                         raise Exception('reqvestis aidi ar momivida')
-                    counterr = 0
+                    print('{} , mivige serverisgan axal motxovis aidi '.format(request_id))
 
                     for i in range(7):
 
 
 
-                        counterr+=1
-                        print(str(counterr))
+
                         data = b''
 
-                        print('brauzeridan vigeb datas')
+
                         request= conn.recv(65000)
+
 
                         while True:
                             try:
@@ -330,32 +331,44 @@ class local_server():
                                 request += temp
                             except Exception as e:
 
-                                print('======================')
 
                                 conn.settimeout(None)
                                 break
 
 
-                        print('brauzeridan data amovige'+str(len(request)))
+                        print('{} , amovige brauzerisgan reqvesti, biji {}'.format(request_id,i))
+                        recchaci = b'\x14\x03'
+
+                        recalert = b'\x15\x03'
+
+                        rechand = b'\x16\x03'
+
+                        datarec = b'\x17\x03'
+
+                        patterns = [recchaci, recalert, rechand, datarec]
+
+
+
+
+
 
                         if request:
                             ssss = datetime.datetime.now()
                             counter = 0
 
-                            print('send request with id:' + str(request_id) + ' size: ' + str(
-                                len(request)) + ' https:true')
+
                             gggg=datetime.datetime.now()
                             if self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id):
+
                                 ggee=datetime.datetime.now()
-                                print('gc need '+ str((ggee-gggg).total_seconds()))
+
+
                                 data = None
 
                                 ggrr=datetime.datetime.now()
                                 data = self.geocell_receiver(request_id, https=True)
                                 ggse=datetime.datetime.now()
-                                print('gc rec need '+str((ggse-ggrr).total_seconds()))
-                                print('receive responce with id:' + str(request_id) + ' size: ' + str(
-                                    len(data)) + ' https:true')
+
 
                                 # აქ უნდა გზიპ დეკომპრესია
                                 if not data:
@@ -365,19 +378,17 @@ class local_server():
                                 # tl=len(data)
                                 # data = gzip.decompress(data)
                                 # tl2=len(data)
-                                # print('==================== '+str(tl2)+ ' '+str(tl)+' ' +str(tl2-tl))
 
-                                print('brauzers miveco data '+str(len(data)))
                                 conn.sendall(data)
                                 ffff=datetime.datetime.now()
-                                print('dr '+str((ffff-ssss).total_seconds()))
+
                         else:
                             conn.close()
                             raise Exception('brauzerma reqvesti ar mogvca')
 
 
                 else:
-                    print('*****************************')
+
                     counter = 0
                     while counter < settings.max_resend_try:
                         counter += 1
@@ -388,9 +399,9 @@ class local_server():
 
                     if not request_id:
                         raise Exception()
-                    print('send request with id:' + str(request_id) + ' size: ' + str(len(request)))
+
                     data = self.geocell_receiver(request_id)
-                    print('receive responce with id:' + str(request_id) + ' size: ' + str(len(data)))
+
                     # აქ უნდა გზიპ დეკომპრესია
                     if not data:
                         conn.close()
@@ -409,7 +420,7 @@ class local_server():
         except Exception as e:
 
 
-           logging.exception('message')
+
            print(str(e))
 
 
