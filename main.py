@@ -22,7 +22,8 @@ import random
 class local_server():
     # შიდა პროქსის ip და port რომელიც უნდა მიუთითოთ ბრაუზერში
     local_proxy_ip = '127.0.0.1'
-    local_proxy_port = 1327
+    local_https_proxy_port = 1327
+    local_http_proxy_port = 1328
     requests_id = []
     requests_counter = 0
     thread_lock = threading.Lock()
@@ -39,7 +40,31 @@ class local_server():
         self.thread_lock.release()
         return res
 
-    def start_server(self):
+    def start_https_server(self):
+
+        # იხსნება სოკეტი და იწყება პორტზე მოსმენა
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+
+        sock.bind((self.local_proxy_ip, self.local_https_proxy_port))
+        sock.listen(5)
+
+        print('[*] start proxy client at ip {} and port {}'.format(self.local_proxy_ip, str(self.local_https_proxy_port)))
+
+        print('[*] protocol http/https')
+        print('[*] socket protocol udp')
+
+        while True:
+
+            conn, addr = sock.accept()
+
+
+            thr = threading.Thread(target=self.https_request_handler, args=(conn, addr))
+            thr.start()
+
+
+
+    def start_http_server(self):
 
         # იხსნება სოკეტი და იწყება პორტზე მოსმენა
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -60,195 +85,38 @@ class local_server():
             thr = threading.Thread(target=self.request_handler, args=(conn, addr))
             thr.start()
 
-    def geocell_sender(self, request, request_id=None, reqport=None, reqhost=None,random_port=random.choice(settings.remote_server_port_range),biji=None):
-
-        if request_id:
-            data_to_send = json.dumps({'op': 'send_req_data', 'data': request, 'request_id': str(request_id),'biji':biji},
-                                      ensure_ascii=False).encode()
-        else:
-            data_to_send = json.dumps({'op': 'send_req_data', 'data': request, 'host': reqhost, 'port': reqport,'biji':biji},
-                                      ensure_ascii=False).encode()
-
-        server_address = (settings.remote_server_ip, random_port)
-
-        counter = 0
-        status = ''
-        while counter < settings.max_resend_try:
-
-            counter = counter + 1
-
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
-
-                sock.sendto(data_to_send, server_address)
-
-                sock.settimeout(settings.global_timeout)
-                ack, addr = sock.recvfrom(settings.max_fragment_size)
-                sock.settimeout(None)
-                sock.close()
+    def sender(self,conn,req,random_port):
+        while True:
+                try:
+                   data = conn.recv(65000)
+                   if not data:raise Exception()
 
 
-                if ack:
-                    ack = ack.decode()
+                except Exception as e:
+                   conn.close()
+                   return
 
-                    if not request_id:
-                        json_data = json.loads(ack)
-                        status = json_data['request_id']
-                    else:
-                        status = request_id
+                udpclient = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-                    break
-                else:
+                udpclient.sendto(req.encode() + b'|-1327-|' + data, (settings.remote_server_ip, random_port))
+                print('send data to server')
 
-                    status = False
-                    continue
-
-            except Exception as e:
-                sock.settimeout(None)
-                status = False
-
-                # print('ვერ მიიღო აცკი')
-                continue
-
-        return status
-
-    def threaded_receiver(self, fragment_id, request_id, res,biji=None,random_port=random.choice(settings.remote_server_port_range),):
-
-        server_address = (settings.remote_server_ip, random_port)
-
-        data_to_send = json.dumps({'op': 'receive_fr_data', 'request_id': str(request_id), 'fr_index': fragment_id,'biji':biji},
-                                  ensure_ascii=False)
-        counter = 0
-        res_data = b''
-        while counter < settings.max_resend_try:
-
-            counter = counter + 1
-
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-
-                sock.sendto(data_to_send.encode(), server_address)
-
-                sock.settimeout(settings.global_timeout)
-                ack, addr = sock.recvfrom(settings.max_fragment_size)
-                sock.settimeout(None)
-                sock.close()
-
-                if ack:
-                    res_data = ack
-                    data_to_send = json.dumps(
-                        {'op': 'receive_fr_data', 'fr_index': fragment_id, 'request_id': str(request_id),
-                         'action': 'delete','biji':biji},
-                        ensure_ascii=False)
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-
-                    sock.sendto(data_to_send.encode(), server_address)
-                    sock.close()
-
-                    # print("received fragment" + str(fragment_id) + ':' + str(request_id) + ' time:' + str(t2 - t))
-
-                    break
-                    # else:
-                    #
-                    #
-                    #     continue
-
-            except Exception as e:
-
-                sock.settimeout(None)
-
-        res.append({'counter': fragment_id, 'data': res_data})
-
-    def geocell_receiver(self, request_id, https=False,random_port=random.choice(settings.remote_server_port_range),biji=None):
-        ffst = datetime.datetime.now()
-        if not https:
-            data_to_send = json.dumps({'op': 'receive_fr_count', 'request_id': str(request_id),'biji':biji},
-                                      ensure_ascii=False).encode()
-        else:
-            data_to_send = json.dumps({'op': 'https_receive_fr_count', 'request_id': str(request_id),'biji':biji},
-                                      ensure_ascii=False).encode()
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-
-        server_address = (settings.remote_server_ip, random_port)
-
-        sock.sendto(data_to_send, server_address)
-        # აქ დასაფიქრებელია ცოტა,ტაიმაუტი ხო არ უნდა
-        # დომებია,ჩავასწორე
-        imm=datetime.datetime.now()
-        try:
-            sock.settimeout(settings.responce_timeout)
-            data, addr = sock.recvfrom(settings.max_fragment_size*3)
-            sock.settimeout(None)
-            sock.close()
-
-        except:
-            sock.close()
-
-            return b''
-        imme=datetime.datetime.now()
-
-        data = data.decode()
-
-        # print('************'+str(len(data)))
-
-        if len(data)==1:
-            sock.close()
-            return b''
-        data = json.loads(data)
-        # print('|||||||||||||||||||||||||||||||||||||||||||')
-        # print(data)
-        dlen = data['len']
-        fr_data = data['fragment']
-
-        first_fragment = base64.decodebytes(fr_data.encode())
-        # print('fr ken'+str(dlen))
-        # print('b64len'+str(len(fr_data)))
-        # print('bytelen'+str(len(first_fragment)))
+    def receiver(self, conn, req, random_port):
+        while True:
+            time.sleep(0.1)
 
 
 
-        incoming_data_fragments_length = int(dlen)
-        if incoming_data_fragments_length == 0: return b''
-        # print(str(incoming_data_fragments_length)+' fr length'+' https:'+ str(https))
+            udpclient = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        # print('geocell fragmentebis migebis interval ' + str(time.time()-start))
+            udpclient.sendto(req.encode() + b'|-1327-|', (settings.remote_server_ip, random_port))
+            data=udpclient.recvfrom(65000)
+            print('received data from server')
+            conn.sendall(data[0])
 
-        res_data =first_fragment
-
-        res = []
-        ths = []
-        ffed=datetime.datetime.now()
-
-        for i in range(1, incoming_data_fragments_length):
-            th = threading.Thread(target=self.threaded_receiver, args=(i, request_id, res,biji,))
-            ths.append(th)
-        for j in ths:
-            j.start()
-        for j in ths:
-            j.join()
-
-        if len(res)+1 != incoming_data_fragments_length: return b''
-        res.sort(key=lambda x: x['counter'])
-
-        for i in res:
-            dat = i['data']
-            if data:
-                res_data += dat
-            else:
-                return b''
-
-
-            # print('geocel receibving interval '+str(start))
-
-        return res_data
-
-    def request_handler(self, conn, addr,random_port=random.choice(settings.remote_server_port_range)):
+    def https_request_handler(self, conn, addr,random_port=random.choice(settings.remote_server_port_range)):
 
         request_id = ''
         data = b''
@@ -257,18 +125,7 @@ class local_server():
 
 
             request =  conn.recv(65000)
-            # try:
-            #     conn.settimeout(0.1)
-            #     tempp = conn.recv(1)
-            #     conn.settimeout(None)
-            #     request += tempp
-            #     if tempp:
-            #         print('^^^^^^^^^^^^^aaaaa')
-            # except Exception as e:
-            #     conn.settimeout(None)
-            #     pass
 
-            # print('req sig'+str(len(request)))
             if request:
 
                 try:
@@ -292,173 +149,50 @@ class local_server():
                     conn.sendall(reply.encode())
                     time.sleep(0.01)
 
-                    host = headers['path']
-                    lr = host.split(':')
-                    host = lr[0]
-                    if len(lr) == 2:
-                        port = int(lr[1])
 
 
-                    request_id = self.geocell_sender(request.decode(), reqhost=host, reqport=port)
+                host = headers['path']
+                lr = host.split(':')
+                host = lr[0]
+                if len(lr) == 2:
+                    port = int(lr[1])
 
+                #get request id first
+                udpclient=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+                udpclient.sendto('request_id|{}|{}'.format(host,port).encode(),(settings.remote_server_ip,random_port))
 
-                    if not request_id:
-                        conn.close()
-                        raise Exception('reqvestis aidi ar momivida')
-                    print('{} , mivige serverisgan axal motxovis aidi '.format(request_id))
+                request_id=udpclient.recvfrom(65000)[0].decode()
+                print('reqvestis aidi maq')
+                time.sleep(0.1)
+                if request_id:
 
-                    for i in range(7):
+                    thr = threading.Thread(target=self.sender, args=(conn,request_id,random_port))
 
+                    thr.start()
+                    thr2 = threading.Thread(target=self.receiver, args=(conn,request_id,random_port))
 
-
-
-
-                        data = b''
-
-
-                        request= conn.recv(65000)
-
-
-                        while True:
-                            try:
-
-                                temp = b''
-                                conn.settimeout(0.1)
-
-                                temp = conn.recv(1)
-
-                                conn.settimeout(None)
-
-                                if len(temp) != 1: break
-                                temp += conn.recv(65000)
-                                request += temp
-                            except Exception as e:
-
-
-                                conn.settimeout(None)
-                                break
-
-
-
-                        recchaci = b'\x14\x03'
-
-                        recalert = b'\x15\x03'
-
-                        rechand = b'\x16\x03'
-
-                        datarec = b'\x17\x03'
-
-                        patterns = [recchaci, recalert, rechand, datarec]
-                        res=[]
-                        for pat in patterns:
-                            res.append(request.rfind(pat))
+                    thr2.start()
 
 
 
 
 
-                        if request:
-                            print('{} , amovige brauzerisgan reqvesti, biji {},paternebi {} , pozociebi{}'.format(
-                                request_id, i, patterns, res))
-
-                            ssss = datetime.datetime.now()
-                            counter = 0
 
 
-                            gggg=datetime.datetime.now()
-                            if self.geocell_sender(base64.encodebytes(request).decode(), request_id=request_id,biji=i):
-                                print('{} ,-> servers gavugzavne reqvesti, biji {}'.format(
-                                    request_id, i))
-
-                                ggee=datetime.datetime.now()
-
-
-                                data = None
-
-                                ggrr=datetime.datetime.now()
-                                data = self.geocell_receiver(request_id, https=True,biji=i)
-
-
-                                ggse=datetime.datetime.now()
-
-
-                                # აქ უნდა გზიპ დეკომპრესია
-                                if not data:
-                                    conn.close()
-                                    raise Exception('{} ,<- serverma carieli responsi mogvca , biji {}'.format(request_id,i))
-
-
-                                print('{} ,<- serveridan mivige responsi, biji {}, zoma {}'.format(
-                                    request_id, i, len(data)))
-
-                                # tl=len(data)
-                                # data = gzip.decompress(data)
-                                # tl2=len(data)
-
-                                conn.sendall(data)
-                                ffff=datetime.datetime.now()
-
-                        else:
-                            conn.close()
-                            raise Exception('{} , brauzerma reqvesti ar mogvca , biji {}'.format(request_id,i))
-
-
-                else:
-
-                    counter = 0
-                    while counter < settings.max_resend_try:
-                        counter += 1
-                        request_id = self.geocell_sender(request.decode())
-                        if request_id: break
-                    else:
-                        raise Exception()
-
-                    if not request_id:
-                        raise Exception()
-
-                    data = self.geocell_receiver(request_id)
-
-                    # აქ უნდა გზიპ დეკომპრესია
-                    if not data:
-                        conn.close()
-                        raise Exception()
-                    # tl = len(data)
-                    # data = gzip.decompress(data)
-                    # tl2 = len(data)
-                    # print('==================== ' + str(tl2) + ' ' + str(tl) + ' ' + str(tl2 - tl))
-                    if not data:
-                        conn.close()
-                        raise Exception()
-
-                    conn.sendall(data)
-                    conn.close()
 
         except Exception as e:
 
 
 
-           print(str(e))
+         logging.exception('msg')
 
 
-        finally:
 
-            if request_id:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-
-                server_address = (settings.remote_server_ip, random_port)
-                data_to_send = json.dumps(
-                    {'op': 'clean', 'request_id': str(request_id),
-                     },
-                    ensure_ascii=False)
-                sock.sendto(data_to_send.encode(), server_address)
-                sock.close()
-                conn.close()
 
 
 def server():
     a = local_server()
-    a.start_server()
+    a.start_https_server()
 
 
 if __name__ == "__main__":
